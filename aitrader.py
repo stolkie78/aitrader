@@ -1,4 +1,4 @@
-from bitvavo import Bitvavo
+from python_bitvavo_api.bitvavo import Bitvavo
 from sklearn.linear_model import LinearRegression
 import numpy as np
 import time

@@ -19,10 +19,10 @@ bitvavo = Bitvavo({
 # Configuratie
 SYMBOL = 'BTC-EUR'  # Trading paar
 THRESHOLD = 0.5  # Percentage winst voor take-profit
-STOP_LOSS = -1.0  # Percentage verlies om te stoppen
-TRADE_AMOUNT = 0.001  # Hoeveelheid BTC per trade
+STOP_LOSS = -0.7  # Percentage verlies om te stoppen
+TRADE_AMOUNT = 0.005  # Hoeveelheid BTC per trade
 CHECK_INTERVAL = 10  # Interval in seconden tussen prijschecks
-DEMO_MODE = True  # Zet op False om echte trades uit te voeren
+DEMO_MODE = False  # Zet op False om echte trades uit te voeren
 
 
 def get_current_price(symbol):

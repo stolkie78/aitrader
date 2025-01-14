@@ -18,18 +18,22 @@ bitvavo = Bitvavo({
 })
 
 # Configuratie
-SYMBOLS = ['BTC-EUR', 'ETH-EUR']  # Lijst van munten
-WINDOW_SIZE = 10  # Aantal datapunten voor historische analyse
-THRESHOLD = 2  # Percentage prijsverandering voor koop/verkoopbeslissingen
+SYMBOLS = ['BTC-EUR', 'ETH-EUR', 'XRP-EUR']  # Lijst van munten
+WINDOW_SIZE = 10  # Historische datapunten voor analyse
+THRESHOLD = 2  # Percentage prijsverandering voor koop/verkoopacties
 MAX_TOTAL_INVESTMENT = 1000  # Maximum totaal investeringsbedrag in EUR
 current_investment = 0  # Houdt bij hoeveel er momenteel is geïnvesteerd
 DAILY_DATA = {symbol: {'transactions': [], 'prices': []} for symbol in SYMBOLS}
 START_TIME = time.time()
+DEMO_MODE = True  # Zet op False om echte trades uit te voeren
 
 
 def get_current_price(symbol):
     """Haal de huidige prijs op."""
     ticker = bitvavo.tickerPrice({'market': symbol})
+    if 'price' not in ticker:
+        raise ValueError(
+            f"Kon de prijs niet ophalen voor {symbol}. Response: {ticker}")
     return float(ticker['price'])
 
 
@@ -66,7 +70,6 @@ def calculate_daily_profit_loss(symbol):
     profit_loss = 0
     for txn in transactions:
         if txn['side'] == 'sell':
-            # Winst/verlies = (verkoopprijs - gemiddelde aankoopprijs) * hoeveelheid
             buy_txns = [t for t in transactions if t['side']
                         == 'buy' and t['timestamp'] < txn['timestamp']]
             if buy_txns:
@@ -85,8 +88,22 @@ def daily_report():
     print("----------------------------------------\n")
 
 
+def place_order(symbol, side, amount, price):
+    """Plaats een order of toon een simulatie van de order in demo-modus."""
+    if DEMO_MODE:
+        print(
+            f"[DEMO] {side.capitalize()} {amount:.6f} {symbol.split('-')[0]} tegen {price:.2f} EUR.")
+    else:
+        try:
+            order = bitvavo.placeOrder(symbol, side, 'market', {
+                                    'amount': str(amount)})
+            print(f"Order geplaatst: {order}")
+        except Exception as e:
+            print(f"Fout bij het plaatsen van de order: {e}")
+
+
 def trading_bot():
-    """Trading bot met dagelijkse winst/verlies rapportage en max trading bedrag."""
+    """Trading bot met demo-modus en dagelijkse winst/verlies rapportage."""
     global current_investment, START_TIME
 
     try:
@@ -96,11 +113,9 @@ def trading_bot():
                 print(f"Huidige prijs van {symbol}: {current_price:.2f} EUR")
                 DAILY_DATA[symbol]['prices'].append(current_price)
 
-                # Behoud alleen de laatste `WINDOW_SIZE` prijzen
                 if len(DAILY_DATA[symbol]['prices']) > WINDOW_SIZE:
                     DAILY_DATA[symbol]['prices'].pop(0)
 
-                # Train een model en maak een voorspelling
                 if len(DAILY_DATA[symbol]['prices']) == WINDOW_SIZE:
                     model = train_model(DAILY_DATA[symbol]['prices'])
                     next_price = predict_price(
@@ -110,31 +125,27 @@ def trading_bot():
                     print(
                         f"Voorspelde prijsverandering voor {symbol}: {price_change:.2f}%")
 
-                    # Koop of verkoop op basis van voorspelling
                     if price_change > THRESHOLD and current_investment < MAX_TOTAL_INVESTMENT:
-                        amount = 0.01  # Koop een kleine hoeveelheid
+                        amount = 0.01
                         investable_amount = amount * current_price
                         if current_investment + investable_amount <= MAX_TOTAL_INVESTMENT:
                             record_transaction(
                                 symbol, 'buy', amount, current_price)
                             current_investment += investable_amount
-                            print(
-                                f"Koop {amount} {symbol.split('-')[0]} tegen {current_price:.2f} EUR.")
+                            place_order(symbol, 'buy', amount, current_price)
 
                     elif price_change < -THRESHOLD:
-                        balance = 0.01  # Stel dat we 0.01 van de munt hebben
+                        balance = 0.01
                         record_transaction(
                             symbol, 'sell', balance, current_price)
                         current_investment -= balance * current_price
-                        print(
-                            f"Verkoop {balance} {symbol.split('-')[0]} tegen {current_price:.2f} EUR.")
+                        place_order(symbol, 'sell', balance, current_price)
 
-            # Controleer of er een nieuwe dag is begonnen
             if time.time() - START_TIME >= 24 * 3600:
                 daily_report()
-                START_TIME = time.time()  # Reset de starttijd voor de nieuwe dag
+                START_TIME = time.time()
 
-            time.sleep(60)  # Wacht 1 minuut voor de volgende iteratie
+            time.sleep(60)
     except KeyboardInterrupt:
         print("Trading bot gestopt.")
     except Exception as e:

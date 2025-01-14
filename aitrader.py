@@ -2,6 +2,7 @@ from python_bitvavo_api.bitvavo import Bitvavo
 from sklearn.linear_model import LinearRegression
 import numpy as np
 import time
+from datetime import datetime
 
 # Configureer je API-sleutels hier
 API_KEY = 'jouw_api_key'
@@ -26,6 +27,7 @@ current_investment = 0  # Houdt bij hoeveel er momenteel is geïnvesteerd
 DAILY_DATA = {symbol: {'transactions': [], 'prices': []} for symbol in SYMBOLS}
 START_TIME = time.time()
 DEMO_MODE = True  # Zet op False om echte trades uit te voeren
+SLEEP_INTERVAL = 60  # Interval tussen runs in seconden
 
 
 def get_current_price(symbol):
@@ -96,18 +98,20 @@ def place_order(symbol, side, amount, price):
     else:
         try:
             order = bitvavo.placeOrder(symbol, side, 'market', {
-                                    'amount': str(amount)})
+                                       'amount': str(amount)})
             print(f"Order geplaatst: {order}")
         except Exception as e:
             print(f"Fout bij het plaatsen van de order: {e}")
 
 
 def trading_bot():
-    """Trading bot met demo-modus en dagelijkse winst/verlies rapportage."""
+    """Trading bot met meer informatie tijdens de run."""
     global current_investment, START_TIME
 
     try:
         while True:
+            print(
+                f"\n--- Nieuwe Run: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---")
             for symbol in SYMBOLS:
                 current_price = get_current_price(symbol)
                 print(f"Huidige prijs van {symbol}: {current_price:.2f} EUR")
@@ -133,6 +137,8 @@ def trading_bot():
                                 symbol, 'buy', amount, current_price)
                             current_investment += investable_amount
                             place_order(symbol, 'buy', amount, current_price)
+                            print(
+                                f"[INFO] Actie: Koopt {amount} {symbol.split('-')[0]}.")
 
                     elif price_change < -THRESHOLD:
                         balance = 0.01
@@ -140,12 +146,23 @@ def trading_bot():
                             symbol, 'sell', balance, current_price)
                         current_investment -= balance * current_price
                         place_order(symbol, 'sell', balance, current_price)
+                        print(
+                            f"[INFO] Actie: Verkoopt {balance} {symbol.split('-')[0]}.")
 
+                    else:
+                        print("[INFO] Geen actie nodig.")
+
+            print(f"Huidige investering: {current_investment:.2f} EUR")
+            print(
+                f"Resterend budget: {MAX_TOTAL_INVESTMENT - current_investment:.2f} EUR")
+            print(f"Volgende run over {SLEEP_INTERVAL} seconden.")
+
+            # Controleer of er een nieuwe dag is begonnen
             if time.time() - START_TIME >= 24 * 3600:
                 daily_report()
                 START_TIME = time.time()
 
-            time.sleep(60)
+            time.sleep(SLEEP_INTERVAL)
     except KeyboardInterrupt:
         print("Trading bot gestopt.")
     except Exception as e:

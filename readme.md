@@ -30,6 +30,7 @@ Deze trading bot is geschreven in Python en maakt gebruik van de Bitvavo API. He
   - `scikit-learn`
   - `numpy`
 
+
 ### API-sleutels
 Voeg je Bitvavo API-sleutels toe in de configuratie:
 ```python
@@ -78,9 +79,15 @@ MAX_TOTAL_INVESTMENT = 1000  # Maximum investeringsbedrag
 
 ## **Installatie**
 
+apt install python3-full 
+
+python3 -m venv aitrader_runtime
+in Bash_profile: source $HOME/aitrader_runtime/bin/activate
+
+
 1. Installeer de benodigde pakketten:
    ```bash
-   pip install bitvavo scikit-learn numpy
+   pip install python-bitvavo-api scikit-learn numpy
    ```
 
 2. Voeg je API-sleutels toe aan de configuratie in het script.

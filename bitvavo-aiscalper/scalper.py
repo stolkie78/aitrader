@@ -90,10 +90,8 @@ def get_current_price(symbol):
     """Haal de huidige prijs op."""
     ticker = bitvavo.tickerPrice({'market': symbol})
     if 'price' not in ticker:
-        log_message(f"Fout: Kon de prijs niet ophalen voor {
-                    symbol}. Response: {ticker}")
-        raise ValueError(f"Kon de prijs niet ophalen voor {
-                        symbol}. Response: {ticker}")
+        log_message(f"Fout: Kon de prijs niet ophalen voor {symbol}.")
+        raise ValueError(f"Kon de prijs niet ophalen voor {symbol}. Response: {ticker}")
     return float(ticker['price'])
 
 
@@ -141,8 +139,7 @@ def generate_daily_report():
 def place_order(symbol, side, amount, price):
     """Plaats een order of toon een simulatie in demo-modus."""
     if DEMO_MODE:
-        log_message(f"[DEMO] {side.capitalize()} {amount:.6f} {
-                    symbol.split('-')[0]} tegen {price:.2f} EUR.")
+        log_message(f"[DEMO] {side.capitalize()} {amount:.6f} {symbol.split('-')[0]} tegen {price:.2f} EUR.")
     else:
         try:
             order = bitvavo.placeOrder(symbol, side, 'market', {

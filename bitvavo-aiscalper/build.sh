@@ -1,1 +1,1 @@
-docker build -t bitvavo-aiscalper:0.1 . --no-cache
+docker build -t bitvavo-scalper . --no-cache

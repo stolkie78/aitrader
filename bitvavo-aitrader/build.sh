@@ -1,0 +1,1 @@
+docker build -t bitvavo-aitrader:0.1 . --no-cache

@@ -2,7 +2,7 @@
   "SYMBOL": "SOL-EUR",
   "THRESHOLD": 0.5,
   "STOP_LOSS": -0.7,
-  "TRADE_AMOUNT": 0.005,
+  "TRADE_AMOUNT": 1,
   "CHECK_INTERVAL": 180,
   "DEMO_MODE": true
 }

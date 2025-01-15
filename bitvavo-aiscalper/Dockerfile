@@ -9,9 +9,7 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Python-script kopiëren
-COPY aitrader.py /app/aitrader.py
-COPY config.json /app/config.json
-COPY trader.json /app/trader.json
+COPY aiscalper.py /app/aiscalper.py
 
 # Default command instellen
-CMD ["python", "aitrader.py"] 
+CMD ["python", "aiscalper.py"] 

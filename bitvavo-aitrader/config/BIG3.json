@@ -1,0 +1,27 @@
+{
+    "SYMBOLS": [
+        "BTC-EUR",
+        "ETH-EUR",
+        "XRP-EUR"
+    ],
+    "WINDOW_SIZE": 10,
+    "THRESHOLD": 2,
+    "MAX_TOTAL_INVESTMENT": 1000,
+    "current_investment": 0,
+    "DAILY_DATA": {
+        "BTC-EUR": {
+            "transactions": [],
+            "prices": []
+        },
+        "ETH-EUR": {
+            "transactions": [],
+            "prices": []
+        },
+        "XRP-EUR": {
+            "transactions": [],
+            "prices": []
+        }
+    },
+    "DEMO_MODE": true,
+    "SLEEP_INTERVAL": 15
+}

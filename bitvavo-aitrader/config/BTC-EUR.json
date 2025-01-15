@@ -1,14 +1,10 @@
 {
     "SYMBOL": "BTC-EUR",
-    "WINDOW_SIZE": 10,
-    "THRESHOLD": 0.001,
-    "STOP_LOSS": -1,
+    "WINDOW_SIZE": 14,
+    "THRESHOLD": 0.5,
     "TRADE_AMOUNT": 0.01,
-    "MAX_TOTAL_INVESTMENT": 1000,
-    "CHECK_INTERVAL": 15,
-    "RSI_WINDOW": 14,
-    "SMA_WINDOW": 10,
-    "EMA_WINDOW": 10,
-    "VOLATILITY_MULTIPLIER": 2,
-    "DEMO_MODE": true
+    "RSI_OVERBOUGHT": 70,
+    "RSI_OVERSOLD": 30,
+    "DEMO_MODE": true,
+    "CHECK_INTERVAL": 60
 }

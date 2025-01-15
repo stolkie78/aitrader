@@ -170,13 +170,11 @@ def trading_bot():
                 price_change = ((next_price - current_price) /
                                 current_price) * 100
 
-                log_message(f"Voorspelde prijs: {
-                            next_price:.2f} EUR | Verandering: {price_change:.2f}%")
+                log_message(f"Voorspelde prijs: {next_price:.2f} EUR | Verandering: {price_change:.2f}%")
 
                 if not status["open_position"] and price_change >= THRESHOLD:
                     # Kooppositie openen
-                    log_message(f"[INFO] Voorspelling suggereert winst! Koopt {
-                                TRADE_AMOUNT} BTC tegen {current_price:.2f} EUR.")
+                    log_message(f"[INFO] Voorspelling suggereert winst! Koopt {TRADE_AMOUNT} BTC tegen {current_price:.2f} EUR.")
                     place_order(SYMBOL, 'buy', TRADE_AMOUNT, current_price)
                     record_transaction('buy', TRADE_AMOUNT, current_price)
                     status.update(
@@ -188,8 +186,7 @@ def trading_bot():
                     profit_loss = (
                         (current_price - status["buy_price"]) / status["buy_price"]) * 100
                     if profit_loss >= THRESHOLD:
-                        log_message(f"[INFO] Take-profit bereikt! Verkoopt {TRADE_AMOUNT} BTC tegen {
-                                    current_price:.2f} EUR (+{profit_loss:.2f}%).")
+                        log_message(f"[INFO] Take-profit bereikt! Verkoopt {TRADE_AMOUNT} BTC tegen {current_price:.2f} EUR (+{profit_loss:.2f}%).")
                         place_order(SYMBOL, 'sell',
                                     TRADE_AMOUNT, current_price)
                         record_transaction('sell', TRADE_AMOUNT, current_price)
@@ -197,8 +194,7 @@ def trading_bot():
                             {"last_action": "sell", "buy_price": None, "open_position": False})
                         save_status(STATUS_FILE, status)
                     elif profit_loss <= STOP_LOSS:
-                        log_message(f"[INFO] Stop-loss bereikt! Verkoopt {TRADE_AMOUNT} BTC tegen {
-                                    current_price:.2f} EUR ({profit_loss:.2f}%).")
+                        log_message(f"[INFO] Stop-loss bereikt! Verkoopt {TRADE_AMOUNT} BTC tegen {current_price:.2f} EUR ({profit_loss:.2f}%).")
                         place_order(SYMBOL, 'sell',
                                     TRADE_AMOUNT, current_price)
                         record_transaction('sell', TRADE_AMOUNT, current_price)

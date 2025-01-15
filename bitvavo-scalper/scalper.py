@@ -54,9 +54,24 @@ bitvavo = Bitvavo({
     'DEBUGGING': config.get('DEBUGGING', False)
 })
 
+# Slack
+slack = Bitvavo({
+    'APIKEY': config.get('API_KEY'),
+    'APISECRET': config.get('API_SECRET'),
+    'RESTURL': config.get('RESTURL', 'https://api.bitvavo.com/v2'),
+    'WSURL': config.get('WSURL', 'wss://ws.bitvavo.com/v2/'),
+    'ACCESSWINDOW': config.get('ACCESSWINDOW', 10000),
+    'DEBUGGING': config.get('DEBUGGING', False)
+})
+
+
+# Configuratie laden uit slack.json
+slack_config = load_config('slack.json')
+SLACK_WEBHOOK_URL = slack_config.get("SLACK_WEBHOOK_URL")
+print(f"Slack configuratie: {slack_config}")
+
 # Configuratie laden vanuit trader.json
 scalper_config = load_config('scalper.json')
-SLACK_WEBHOOK_URL = scalper_config.get("SLACK_WEBHOOK_URL")
 SYMBOL = scalper_config.get("SYMBOL")
 THRESHOLD = scalper_config.get("THRESHOLD")
 STOP_LOSS = scalper_config.get("STOP_LOSS")
@@ -85,7 +100,7 @@ def send_to_slack(message):
 def log_message(message):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print(f"[{timestamp}] {message}")
-    send_to_slack(f"[{timestamp}] {message}")
+    send_to_slack(f"{message}")
 
 def get_current_price(symbol):
     """Haal de huidige prijs op."""
@@ -162,7 +177,7 @@ def trading_bot():
             if len(price_history) > WINDOW_SIZE:
                 price_history.pop(0)
 
-            log_message(f"Huidige prijs van {SYMBOL}: {current_price:.2f} EUR")
+            print(f"PRICE {SYMBOL}:{current_price:.2f} COUNT:{len(price_history)}/{WINDOW_SIZE} CHECK_INTERVAL:{CHECK_INTERVAL}")
 
             # Alleen trainen als we genoeg data hebben
             if len(price_history) == WINDOW_SIZE:

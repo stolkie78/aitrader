@@ -5,12 +5,42 @@ import numpy as np
 import time
 from datetime import datetime
 
+# Configuratiebestanden
+STATUS_FILE = "bot_status.json"
+TRANSACTIONS_FILE = "transactions.json"
+
 # Configuratie laden
 
 
 def load_config(file_path):
     with open(file_path, 'r') as f:
         return json.load(f)
+
+
+def load_status(file_path):
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {"open_position": False, "last_action": None, "buy_price": None}
+
+
+def save_status(file_path, status):
+    with open(file_path, 'w') as f:
+        json.dump(status, f)
+
+
+def load_transactions(file_path):
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
+
+
+def save_transactions(file_path, transactions):
+    with open(file_path, 'w') as f:
+        json.dump(transactions, f)
 
 
 config = load_config('config.json')
@@ -36,8 +66,10 @@ RSI_OVERSOLD = trader_config.get("RSI_OVERSOLD", 30)
 DEMO_MODE = trader_config.get("DEMO_MODE", True)
 CHECK_INTERVAL = trader_config.get("CHECK_INTERVAL", 60)
 
-# Prijsgeschiedenis
+# Prijsgeschiedenis, status en transacties
 price_history = []
+status = load_status(STATUS_FILE)
+transactions = load_transactions(TRANSACTIONS_FILE)
 
 # Logfunctie
 
@@ -56,7 +88,9 @@ def get_current_price(symbol):
         log_message(f"Fout: Geen prijsinformatie beschikbaar voor {symbol}.")
         raise ValueError(
             f"Fout bij ophalen prijs {symbol}. Response: {ticker}")
-    return float(ticker['price'])
+    price = float(ticker['price'])
+    log_message(f"Actuele prijs voor {symbol}: {price:.2f} EUR.")
+    return price
 
 # Bereken RSI
 
@@ -73,7 +107,9 @@ def calculate_rsi(prices):
         return 100
 
     rs = avg_gain / avg_loss
-    return 100 - (100 / (1 + rs))
+    rsi = 100 - (100 / (1 + rs))
+    log_message(f"Berekenende RSI: {rsi:.2f}")
+    return rsi
 
 # AI-predictie (Lineaire Regressie)
 
@@ -84,20 +120,35 @@ def train_model(prices):
     prices = np.array(prices).reshape(-1, 1)
     model = LinearRegression()
     model.fit(times, prices)
+    log_message("AI-model succesvol getraind.")
     return model
 
 
 def predict_price(model, next_time):
     log_message(f"Voorspellen van volgende prijs op tijdstip {next_time}.")
-    return model.predict([[next_time]])[0][0]
+    predicted_price = model.predict([[next_time]])[0][0]
+    log_message(f"Voorspelde prijs: {predicted_price:.2f} EUR.")
+    return predicted_price
 
 # Handelslogica
 
 
+def record_transaction(side, amount, price):
+    transaction = {
+        'side': side,
+        'amount': amount,
+        'price': price,
+        'timestamp': datetime.now().isoformat()
+    }
+    transactions.append(transaction)
+    save_transactions(TRANSACTIONS_FILE, transactions)
+    log_message(f"Transactie geregistreerd: {transaction}.")
+
+
 def trading_bot():
+    global price_history, status
     try:
         log_message(f"Trading bot gestart voor {SYMBOL}.")
-
         while True:
             current_price = get_current_price(SYMBOL)
             price_history.append(current_price)
@@ -120,26 +171,30 @@ def trading_bot():
                 )
 
                 # Koopactie
-                if rsi < RSI_OVERSOLD and price_change > THRESHOLD:
+                if not status["open_position"] and rsi < RSI_OVERSOLD and price_change > THRESHOLD:
                     log_message(
                         "[SIGNAAL] RSI laag en voorspelde stijging. Tijd om te kopen.")
                     if DEMO_MODE:
                         log_message(
                             f"[DEMO] Koop {TRADE_AMOUNT} {SYMBOL.split('-')[0]} tegen {current_price:.2f} EUR.")
                     else:
-                        log_message(
-                            f"Koop {TRADE_AMOUNT} {SYMBOL.split('-')[0]} tegen {current_price:.2f} EUR.")
+                        record_transaction('buy', TRADE_AMOUNT, current_price)
+                        status.update(
+                            {"open_position": True, "buy_price": current_price})
+                        save_status(STATUS_FILE, status)
 
                 # Verkoopactie
-                elif rsi > RSI_OVERBOUGHT and price_change < -THRESHOLD:
+                elif status["open_position"] and (rsi > RSI_OVERBOUGHT or price_change < -THRESHOLD):
                     log_message(
-                        "[SIGNAAL] RSI hoog en voorspelde daling. Tijd om te verkopen.")
+                        "[SIGNAAL] RSI hoog of voorspelde daling. Tijd om te verkopen.")
                     if DEMO_MODE:
                         log_message(
                             f"[DEMO] Verkoop {TRADE_AMOUNT} {SYMBOL.split('-')[0]} tegen {current_price:.2f} EUR.")
                     else:
-                        log_message(
-                            f"Verkoop {TRADE_AMOUNT} {SYMBOL.split('-')[0]} tegen {current_price:.2f} EUR.")
+                        record_transaction('sell', TRADE_AMOUNT, current_price)
+                        status.update(
+                            {"open_position": False, "buy_price": None})
+                        save_status(STATUS_FILE, status)
 
             time.sleep(CHECK_INTERVAL)
 

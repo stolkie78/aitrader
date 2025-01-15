@@ -1,118 +1,102 @@
 
-# AITRADER Bot - Documentation
+# Eenvoudige Trading Bot met AI Predictie en RSI
 
-## Overview
-
-The AITRADER Bot is a robust tool for medium to long-term trading strategies. It integrates advanced technical indicators like RSI, SMA, and EMA to provide data-driven insights for making profitable trading decisions.
+Deze eenvoudige trading bot gebruikt **AI-predictie (lineaire regressie)** en **RSI (Relative Strength Index)** om koop- en verkoopsignalen te genereren. Het script haalt marktprijzen op via de Bitvavo API, berekent RSI en voorspelt toekomstige prijzen op basis van historische data.
 
 ---
 
-## Key Features
+## Functies van de Bot
 
-1. **Advanced Technical Indicators**:
-   - **RSI**: Identifies overbought or oversold conditions.
-   - **SMA**: Tracks simple moving averages for trend analysis.
-   - **EMA**: Uses exponential moving averages for better response to recent price changes.
-
-2. **Dynamic Thresholds**:
-   - Automatically adjusts thresholds based on market volatility, allowing flexible trading strategies.
-
-3. **Daily Reporting**:
-   - Logs and calculates daily profit or loss, keeping track of all transactions in `transactions.json`.
-
-4. **Configurable Parameters**:
-   - Fully customizable via `config.json` and `trader.json` to adapt to different markets and strategies.
+1. **Prijs ophalen**: De bot haalt de actuele marktprijs op voor het opgegeven handelspaar.
+2. **RSI berekenen**: De bot berekent RSI (Relative Strength Index) om overbought- en oversold-condities te detecteren.
+3. **AI-predictie**: Gebruikt lineaire regressie om de toekomstige prijs te voorspellen.
+4. **Koop- en verkoopsignalen**:
+   - **Koop** als:
+     - RSI < `RSI_OVERSOLD`
+     - Voorspelde prijswijziging > `THRESHOLD`
+   - **Verkoop** als:
+     - RSI > `RSI_OVERBOUGHT`
+     - Voorspelde prijswijziging < `-THRESHOLD`
+5. **Logging per functionaliteit**: Elke belangrijke stap wordt gelogd, inclusief prijzen, RSI, voorspellingen, en beslissingen.
 
 ---
 
-## Configuration Files
+## Configuratiebestand (`trader.json`)
 
-### `config.json`
-
-This file contains API credentials and general settings:
+De bot gebruikt een JSON-configuratiebestand om de belangrijkste parameters in te stellen:
 
 ```json
 {
-    "API_KEY": "your_api_key",
-    "API_SECRET": "your_api_secret",
-    "RESTURL": "https://api.bitvavo.com/v2",
-    "WSURL": "wss://ws.bitvavo.com/v2/",
-    "ACCESSWINDOW": 10000,
-    "DEBUGGING": false
+    "SYMBOL": "BTC-EUR",                // Handelspaar (bijv. Bitcoin/Euro)
+    "WINDOW_SIZE": 14,                 // Aantal periodes voor RSI-berekening
+    "THRESHOLD": 0.5,                  // Drempel voor voorspelde prijsverandering (%)
+    "TRADE_AMOUNT": 0.01,              // Hoeveelheid munt per trade
+    "RSI_OVERBOUGHT": 70,              // RSI-drempel voor overbought (verkoop)
+    "RSI_OVERSOLD": 30,                // RSI-drempel voor oversold (koop)
+    "DEMO_MODE": true,                 // Simulatiemodus (geen echte trades)
+    "CHECK_INTERVAL": 60               // Tijd (in seconden) tussen controles
 }
 ```
 
-### `trader.json`
+### Uitleg van de parameters
 
-This file allows customization of trading parameters:
+- **SYMBOL**: Het handelspaar dat de bot moet volgen, zoals `BTC-EUR` (Bitcoin/Euro).
+- **WINDOW_SIZE**: Het aantal periodes dat wordt gebruikt voor de berekening van RSI.
+- **THRESHOLD**: De drempelwaarde voor voorspelde prijsveranderingen (in procenten).
+- **TRADE_AMOUNT**: De hoeveelheid cryptovaluta die wordt verhandeld per transactie.
+- **RSI_OVERBOUGHT**: De RSI-waarde waarboven de markt als overbought wordt beschouwd (verkoopsignaal).
+- **RSI_OVERSOLD**: De RSI-waarde waaronder de markt als oversold wordt beschouwd (koopsignaal).
+- **DEMO_MODE**: Als `true`, voert de bot geen echte transacties uit en logt alleen simulaties.
+- **CHECK_INTERVAL**: Het tijdsinterval (in seconden) tussen opeenvolgende marktcontroles.
 
-```json
-{
-    "SYMBOL": "BTC-EUR",
-    "WINDOW_SIZE": 10,
-    "THRESHOLD": 2,
-    "STOP_LOSS": -1,
-    "TRADE_AMOUNT": 0.01,
-    "MAX_TOTAL_INVESTMENT": 1000,
-    "DEMO_MODE": true,
-    "CHECK_INTERVAL": 60,
-    "RSI_WINDOW": 14,
-    "SMA_WINDOW": 10,
-    "EMA_WINDOW": 10,
-    "VOLATILITY_MULTIPLIER": 2
-}
+---
+
+## Voorbeeld Log
+
+Bij uitvoering van de bot worden de volgende logregels weergegeven:
+
+```
+[2025-01-15 16:30:00] Trading bot gestart voor BTC-EUR.
+[2025-01-15 16:31:00] Ophalen van actuele prijs voor BTC-EUR.
+[2025-01-15 16:31:00] Berekenen van RSI.
+[2025-01-15 16:31:00] AI-model trainen met historische prijzen.
+[2025-01-15 16:31:00] Voorspellen van volgende prijs op tijdstip 14.
+[2025-01-15 16:31:00] Actuele prijs: 40000.00 EUR | RSI: 35.00 | Voorspelde prijs: 40500.00 EUR | Voorspelde verandering: 1.25%
+[2025-01-15 16:31:00] [SIGNAAL] RSI laag en voorspelde stijging. Tijd om te kopen.
+[2025-01-15 16:31:00] [DEMO] Koop 0.01 BTC tegen 40000.00 EUR.
 ```
 
 ---
 
-## Usage Instructions
+## Hoe te Gebruiken
 
-1. **Configure API Keys and Preferences**:
-   - Edit `config.json` with your Bitvavo API credentials.
-   - Customize `trader.json` with your desired trading strategy.
+1. Maak een `config.json`-bestand met je Bitvavo API-sleutels:
+   ```json
+   {
+       "API_KEY": "jouw_api_key",
+       "API_SECRET": "jouw_api_secret",
+       "RESTURL": "https://api.bitvavo.com/v2",
+       "WSURL": "wss://ws.bitvavo.com/v2/",
+       "ACCESSWINDOW": 10000,
+       "DEBUGGING": false
+   }
+   ```
 
-2. **Install Dependencies**:
-   - Install the required Python packages:
-     ```bash
-     pip install -r requirements.txt
-     ```
+2. Stel de gewenste parameters in `trader.json`.
 
-3. **Run the Bot**:
-   - Start the bot using:
-     ```bash
-     python trader.py
-     ```
+3. Start de bot:
+   ```bash
+   python trading_bot.py
+   ```
 
-4. **Monitor and Analyze**:
-   - View real-time logs in the console.
-   - Analyze transactions in `transactions.json`.
-
----
-
-## How It Works
-
-1. **Price Monitoring**:
-   - Fetches current prices and tracks historical data.
-
-2. **Technical Analysis**:
-   - Uses RSI, SMA, EMA, and dynamic thresholds to make buy/sell decisions.
-
-3. **Transaction Logging**:
-   - All transactions are saved in `transactions.json` for historical analysis.
-
-4. **Daily Reporting**:
-   - Automatically generates a daily profit/loss report.
+4. Controleer de loguitvoer voor signalen en beslissingen.
 
 ---
 
-## Future Enhancements
+## Opmerking
 
-- Add machine learning models for more accurate predictions.
-- Implement notifications for trade alerts.
-- Enhance backtesting capabilities to validate strategies.
+De bot voert geen echte trades uit als `DEMO_MODE` is ingesteld op `true`. Stel deze parameter in op `false` om live trades uit te voeren.
 
 ---
 
-## Disclaimer
-
-This bot is for educational purposes only. Use at your own risk when trading real funds. Always test thoroughly in demo mode first.
+Veel succes met traden! 🚀

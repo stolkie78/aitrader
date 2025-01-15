@@ -93,7 +93,7 @@ def get_current_price(symbol):
         log_message(f"Fout: Kon de prijs niet ophalen voor {
                     symbol}. Response: {ticker}")
         raise ValueError(f"Kon de prijs niet ophalen voor {
-                         symbol}. Response: {ticker}")
+                        symbol}. Response: {ticker}")
     return float(ticker['price'])
 
 
@@ -146,7 +146,7 @@ def place_order(symbol, side, amount, price):
     else:
         try:
             order = bitvavo.placeOrder(symbol, side, 'market', {
-                                       'amount': str(amount)})
+                                    'amount': str(amount)})
             log_message(f"Order geplaatst: {order}")
         except Exception as e:
             log_message(f"Fout bij het plaatsen van de order: {e}")

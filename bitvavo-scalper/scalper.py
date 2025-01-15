@@ -99,8 +99,8 @@ def send_to_slack(message):
 # Logfunctie
 def log_message(message):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] {message}")
-    send_to_slack(f"{message}")
+    print(f"{SYMBOL}: [{timestamp}] {message}")
+    send_to_slack(f"{SYMBOL}: {message}")
 
 def get_current_price(symbol):
     """Haal de huidige prijs op."""

@@ -1,7 +1,7 @@
-*/config/config.json
-*/config.json
 */trader.json
 */bot_status*.json
 */transactions*.json
 */scalper.json
 */slack.json
+*/config/*json
+*/*.json

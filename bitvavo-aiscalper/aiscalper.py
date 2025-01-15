@@ -13,8 +13,9 @@ def load_config(file_path):
         return json.load(f)
 
 
-# Status laden/opslaan
+# Status en transacties laden/opslaan
 STATUS_FILE = "bot_status.json"
+TRANSACTIONS_FILE = "transactions.json"
 
 
 def load_status(file_path):
@@ -30,6 +31,21 @@ def save_status(file_path, status):
     """Sla de huidige status van de bot op."""
     with open(file_path, 'w') as f:
         json.dump(status, f)
+
+
+def load_transactions(file_path):
+    """Laad transacties uit een bestand."""
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
+
+
+def save_transactions(file_path, transactions):
+    """Sla transacties op in een bestand."""
+    with open(file_path, 'w') as f:
+        json.dump(transactions, f)
 
 
 # Configuratie laden uit config.json
@@ -55,9 +71,11 @@ CHECK_INTERVAL = config.get("CHECK_INTERVAL")
 DEMO_MODE = config.get("DEMO_MODE")
 WINDOW_SIZE = config.get("WINDOW_SIZE", 10)
 
-# Status laden
+# Status en transacties laden
 status = load_status(STATUS_FILE)
+transactions = load_transactions(TRANSACTIONS_FILE)
 price_history = []  # Historische prijzen
+start_time = datetime.now()  # Starttijd voor dagelijkse rapportage
 
 print(f"Trading bot gestart met configuratie: {config}")
 
@@ -93,6 +111,33 @@ def predict_price(model, next_time):
     return model.predict([[next_time]])[0][0]
 
 
+def record_transaction(side, amount, price):
+    """Registreer een transactie."""
+    transaction = {
+        'side': side,
+        'amount': amount,
+        'price': price,
+        'timestamp': time.time()
+    }
+    transactions.append(transaction)
+    save_transactions(TRANSACTIONS_FILE, transactions)
+
+
+def generate_daily_report():
+    """Genereer een dagelijkse rapportage."""
+    total_profit_loss = 0
+    for txn in transactions:
+        if txn['side'] == 'sell':
+            buy_txn = next(
+                (t for t in transactions if t['side'] == 'buy' and t['timestamp'] < txn['timestamp']), None)
+            if buy_txn:
+                profit_loss = (txn['price'] - buy_txn['price']) * txn['amount']
+                total_profit_loss += profit_loss
+
+    log_message(f"Dagelijkse winst/verlies: {total_profit_loss:.2f} EUR")
+    return total_profit_loss
+
+
 def place_order(symbol, side, amount, price):
     """Plaats een order of toon een simulatie in demo-modus."""
     if DEMO_MODE:
@@ -108,8 +153,8 @@ def place_order(symbol, side, amount, price):
 
 
 def trading_bot():
-    """Scalping bot met AI-predictie en herstartbare status."""
-    global status
+    """Scalping bot met AI-predictie, herstartbare status en dagelijkse rapportage."""
+    global status, start_time
     try:
         while True:
             current_price = get_current_price(SYMBOL)
@@ -132,16 +177,17 @@ def trading_bot():
                             next_price:.2f} EUR | Verandering: {price_change:.2f}%")
 
                 if not status["open_position"] and price_change >= THRESHOLD:
-                    # Take-profit voorspelling - Kooppositie openen
+                    # Kooppositie openen
                     log_message(f"[INFO] Voorspelling suggereert winst! Koopt {
                                 TRADE_AMOUNT} BTC tegen {current_price:.2f} EUR.")
                     place_order(SYMBOL, 'buy', TRADE_AMOUNT, current_price)
+                    record_transaction('buy', TRADE_AMOUNT, current_price)
                     status.update(
                         {"last_action": "buy", "buy_price": current_price, "open_position": True})
                     save_status(STATUS_FILE, status)
 
                 elif status["open_position"]:
-                    # Controleer stop-loss of take-profit bij open positie
+                    # Controleer stop-loss of take-profit
                     profit_loss = (
                         (current_price - status["buy_price"]) / status["buy_price"]) * 100
                     if profit_loss >= THRESHOLD:
@@ -149,6 +195,7 @@ def trading_bot():
                                     current_price:.2f} EUR (+{profit_loss:.2f}%).")
                         place_order(SYMBOL, 'sell',
                                     TRADE_AMOUNT, current_price)
+                        record_transaction('sell', TRADE_AMOUNT, current_price)
                         status.update(
                             {"last_action": "sell", "buy_price": None, "open_position": False})
                         save_status(STATUS_FILE, status)
@@ -157,14 +204,21 @@ def trading_bot():
                                     current_price:.2f} EUR ({profit_loss:.2f}%).")
                         place_order(SYMBOL, 'sell',
                                     TRADE_AMOUNT, current_price)
+                        record_transaction('sell', TRADE_AMOUNT, current_price)
                         status.update(
                             {"last_action": "sell", "buy_price": None, "open_position": False})
                         save_status(STATUS_FILE, status)
+
+            # Controleer of een nieuwe dag is begonnen
+            if (datetime.now() - start_time).days >= 1:
+                generate_daily_report()
+                start_time = datetime.now()
 
             time.sleep(CHECK_INTERVAL)
 
     except KeyboardInterrupt:
         log_message("Trading bot gestopt door gebruiker.")
+        generate_daily_report()
     except Exception as e:
         log_message(f"Fout: {e}")
 

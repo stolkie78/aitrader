@@ -13,6 +13,25 @@ def load_config(file_path):
         return json.load(f)
 
 
+# Status laden/opslaan
+STATUS_FILE = "bot_status.json"
+
+
+def load_status(file_path):
+    """Laad de huidige status van de bot."""
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {"last_action": None, "buy_price": None, "open_position": False}
+
+
+def save_status(file_path, status):
+    """Sla de huidige status van de bot op."""
+    with open(file_path, 'w') as f:
+        json.dump(status, f)
+
+
 # Configuratie laden uit config.json
 config = load_config('config.json')
 
@@ -34,11 +53,11 @@ STOP_LOSS = config.get("STOP_LOSS")
 TRADE_AMOUNT = config.get("TRADE_AMOUNT")
 CHECK_INTERVAL = config.get("CHECK_INTERVAL")
 DEMO_MODE = config.get("DEMO_MODE")
-# Aantal historische prijzen voor AI
 WINDOW_SIZE = config.get("WINDOW_SIZE", 10)
 
-# Historische prijzen opslaan
-price_history = []
+# Status laden
+status = load_status(STATUS_FILE)
+price_history = []  # Historische prijzen
 
 print(f"Trading bot gestart met configuratie: {config}")
 
@@ -89,7 +108,8 @@ def place_order(symbol, side, amount, price):
 
 
 def trading_bot():
-    """Scalping bot met AI-predictie."""
+    """Scalping bot met AI-predictie en herstartbare status."""
+    global status
     try:
         while True:
             current_price = get_current_price(SYMBOL)
@@ -111,17 +131,35 @@ def trading_bot():
                 log_message(f"Voorspelde prijs: {
                             next_price:.2f} EUR | Verandering: {price_change:.2f}%")
 
-                if price_change >= THRESHOLD:
-                    # Take-profit
+                if not status["open_position"] and price_change >= THRESHOLD:
+                    # Take-profit voorspelling - Kooppositie openen
                     log_message(f"[INFO] Voorspelling suggereert winst! Koopt {
                                 TRADE_AMOUNT} BTC tegen {current_price:.2f} EUR.")
                     place_order(SYMBOL, 'buy', TRADE_AMOUNT, current_price)
+                    status.update(
+                        {"last_action": "buy", "buy_price": current_price, "open_position": True})
+                    save_status(STATUS_FILE, status)
 
-                elif price_change <= STOP_LOSS:
-                    # Stop-loss
-                    log_message(f"[INFO] Voorspelling suggereert verlies! Verkoopt {
-                                TRADE_AMOUNT} BTC tegen {current_price:.2f} EUR.")
-                    place_order(SYMBOL, 'sell', TRADE_AMOUNT, current_price)
+                elif status["open_position"]:
+                    # Controleer stop-loss of take-profit bij open positie
+                    profit_loss = (
+                        (current_price - status["buy_price"]) / status["buy_price"]) * 100
+                    if profit_loss >= THRESHOLD:
+                        log_message(f"[INFO] Take-profit bereikt! Verkoopt {TRADE_AMOUNT} BTC tegen {
+                                    current_price:.2f} EUR (+{profit_loss:.2f}%).")
+                        place_order(SYMBOL, 'sell',
+                                    TRADE_AMOUNT, current_price)
+                        status.update(
+                            {"last_action": "sell", "buy_price": None, "open_position": False})
+                        save_status(STATUS_FILE, status)
+                    elif profit_loss <= STOP_LOSS:
+                        log_message(f"[INFO] Stop-loss bereikt! Verkoopt {TRADE_AMOUNT} BTC tegen {
+                                    current_price:.2f} EUR ({profit_loss:.2f}%).")
+                        place_order(SYMBOL, 'sell',
+                                    TRADE_AMOUNT, current_price)
+                        status.update(
+                            {"last_action": "sell", "buy_price": None, "open_position": False})
+                        save_status(STATUS_FILE, status)
 
             time.sleep(CHECK_INTERVAL)
 
@@ -133,5 +171,5 @@ def trading_bot():
 
 # Start de bot
 if __name__ == "__main__":
-    log_message("Scalping bot gestart met AI-predictie.")
+    log_message("Scalping bot gestart met herstartbare status.")
     trading_bot()

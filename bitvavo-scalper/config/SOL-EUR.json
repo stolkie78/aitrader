@@ -5,5 +5,6 @@
   "TRADE_AMOUNT": 1,
   "CHECK_INTERVAL": 180,
   "WINDOW_SIZE": 10,
+  "SLACK_WEBHOOK_URL": "https://hooks.slack.com/services/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",
   "DEMO_MODE": true
 }

@@ -1,3 +1,4 @@
 python-bitvavo-api
 scikit-learn
 numpy
+requests

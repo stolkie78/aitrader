@@ -1,22 +1,19 @@
 from python_bitvavo_api.bitvavo import Bitvavo
 from sklearn.linear_model import LinearRegression
+import requests
 import json
 import numpy as np
 import time
 from datetime import datetime
 
 # Laad configuratie vanuit JSON-bestand
-
-
 def load_config(file_path):
     with open(file_path, 'r') as f:
         return json.load(f)
 
-
 # Status en transacties laden/opslaan
 STATUS_FILE = "bot_status_scalper.json"
 TRANSACTIONS_FILE = "transactions_scalper.json"
-
 
 def load_status(file_path):
     """Laad de huidige status van de bot."""
@@ -26,12 +23,10 @@ def load_status(file_path):
     except FileNotFoundError:
         return {"last_action": None, "buy_price": None, "open_position": False}
 
-
 def save_status(file_path, status):
     """Sla de huidige status van de bot op."""
     with open(file_path, 'w') as f:
         json.dump(status, f)
-
 
 def load_transactions(file_path):
     """Laad transacties uit een bestand."""
@@ -41,12 +36,10 @@ def load_transactions(file_path):
     except FileNotFoundError:
         return []
 
-
 def save_transactions(file_path, transactions):
     """Sla transacties op in een bestand."""
     with open(file_path, 'w') as f:
         json.dump(transactions, f)
-
 
 # Configuratie laden uit config.json
 config = load_config('config.json')
@@ -63,6 +56,7 @@ bitvavo = Bitvavo({
 
 # Configuratie laden vanuit trader.json
 scalper_config = load_config('scalper.json')
+SLACK_WEBHOOK_URL = scalper_config.get("SLACK_WEBHOOK_URL")
 SYMBOL = scalper_config.get("SYMBOL")
 THRESHOLD = scalper_config.get("THRESHOLD")
 STOP_LOSS = scalper_config.get("STOP_LOSS")
@@ -79,12 +73,19 @@ start_time = datetime.now()  # Starttijd voor dagelijkse rapportage
 
 print(f"Scalping bot gestart met configuratie: {scalper_config}")
 
+    # Slack-bericht sturen
+def send_to_slack(message):
+    payload= {"text": message}
+    try:
+        requests.post(SLACK_WEBHOOK_URL, json=payload)
+    except Exception as e:
+        print(f"[FOUT] Kon bericht niet naar Slack sturen: {e}")
 
+# Logfunctie
 def log_message(message):
-    """Logt een bericht met timestamp."""
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print(f"[{timestamp}] {message}")
-
+    send_to_slack(f"[{timestamp}] {message}")
 
 def get_current_price(symbol):
     """Haal de huidige prijs op."""
@@ -174,7 +175,7 @@ def trading_bot():
 
                 if not status["open_position"] and price_change >= THRESHOLD:
                     # Kooppositie openen
-                    log_message(f"[INFO] Voorspelling suggereert winst! Koopt {TRADE_AMOUNT} BTC tegen {current_price:.2f} EUR.")
+                    log_message(f"[INFO] Voorspelling suggereert winst! Koopt {TRADE_AMOUNT} ${SYMBOL} tegen {current_price:.2f} EUR.")
                     place_order(SYMBOL, 'buy', TRADE_AMOUNT, current_price)
                     record_transaction('buy', TRADE_AMOUNT, current_price)
                     status.update(

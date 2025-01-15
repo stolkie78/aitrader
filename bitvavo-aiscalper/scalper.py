@@ -14,8 +14,8 @@ def load_config(file_path):
 
 
 # Status en transacties laden/opslaan
-STATUS_FILE = "bot_status.json"
-TRANSACTIONS_FILE = "transactions.json"
+STATUS_FILE = "bot_status_scalper.json"
+TRANSACTIONS_FILE = "transactions_scalper.json"
 
 
 def load_status(file_path):
@@ -62,14 +62,14 @@ bitvavo = Bitvavo({
 })
 
 # Configuratie laden vanuit trader.json
-config = load_config('trader.json')
-SYMBOL = config.get("SYMBOL")
-THRESHOLD = config.get("THRESHOLD")
-STOP_LOSS = config.get("STOP_LOSS")
-TRADE_AMOUNT = config.get("TRADE_AMOUNT")
-CHECK_INTERVAL = config.get("CHECK_INTERVAL")
-DEMO_MODE = config.get("DEMO_MODE")
-WINDOW_SIZE = config.get("WINDOW_SIZE", 10)
+scalper_config = load_config('scalper.json')
+SYMBOL = scalper_config.get("SYMBOL")
+THRESHOLD = scalper_config.get("THRESHOLD")
+STOP_LOSS = scalper_config.get("STOP_LOSS")
+TRADE_AMOUNT = scalper_config.get("TRADE_AMOUNT")
+CHECK_INTERVAL = scalper_config.get("CHECK_INTERVAL")
+DEMO_MODE = scalper_config.get("DEMO_MODE")
+WINDOW_SIZE = scalper_config.get("WINDOW_SIZE", 10)
 
 # Status en transacties laden
 status = load_status(STATUS_FILE)
@@ -77,7 +77,7 @@ transactions = load_transactions(TRANSACTIONS_FILE)
 price_history = []  # Historische prijzen
 start_time = datetime.now()  # Starttijd voor dagelijkse rapportage
 
-print(f"Trading bot gestart met configuratie: {config}")
+print(f"Scalping bot gestart met configuratie: {scalper_config}")
 
 
 def log_message(message):
@@ -225,5 +225,5 @@ def trading_bot():
 
 # Start de bot
 if __name__ == "__main__":
-    log_message("Scalping bot gestart met herstartbare status.")
+    log_message(f"Scalping bot gestart met herstartbare status voor {SYMBOL}.")
     trading_bot()

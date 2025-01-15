@@ -1,5 +1,6 @@
 */config/config.json
 */config.json
 */trader.json
-*/bot_status.json
-*/transactions.json
+*/bot_status*.json
+*/transactions*.json
+*/scalper.json

@@ -5,6 +5,10 @@ import numpy as np
 import time
 from datetime import datetime
 
+# Configuratiebestanden
+STATUS_FILE = "trader_status.json"
+TRANSACTIONS_FILE = "trader_transactions.json"
+
 # Laad configuratie vanuit JSON-bestand
 
 
@@ -12,13 +16,23 @@ def load_config(file_path):
     with open(file_path, 'r') as f:
         return json.load(f)
 
-
 # Status en transacties laden/opslaan
-TRANSACTIONS_FILE = "transactions.json"
+
+
+def load_status(file_path):
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {"open_position": False, "buy_price": None, "last_action": None}
+
+
+def save_status(file_path, status):
+    with open(file_path, 'w') as f:
+        json.dump(status, f)
 
 
 def load_transactions(file_path):
-    """Laad transacties uit een bestand."""
     try:
         with open(file_path, 'r') as f:
             return json.load(f)
@@ -27,15 +41,15 @@ def load_transactions(file_path):
 
 
 def save_transactions(file_path, transactions):
-    """Sla transacties op in een bestand."""
     with open(file_path, 'w') as f:
         json.dump(transactions, f)
 
 
 # Configuratie laden
 config = load_config('config.json')
+trader_config = load_config('trader.json')
 
-# Bitvavo-instantie aanmaken met configuratie
+# Instellen van Bitvavo
 bitvavo = Bitvavo({
     'APIKEY': config.get('API_KEY'),
     'APISECRET': config.get('API_SECRET'),
@@ -45,10 +59,7 @@ bitvavo = Bitvavo({
     'DEBUGGING': config.get('DEBUGGING', False)
 })
 
-# Configuratie laden vanuit trader.json
-trader_config = load_config('trader.json')
-
-# Instellen van munt en parameters
+# Variabelen uit configuratie
 SYMBOL = trader_config.get("SYMBOL")
 WINDOW_SIZE = trader_config.get("WINDOW_SIZE", 10)
 THRESHOLD = trader_config.get("THRESHOLD", 2)
@@ -57,65 +68,78 @@ TRADE_AMOUNT = trader_config.get("TRADE_AMOUNT", 0.01)
 MAX_TOTAL_INVESTMENT = trader_config.get("MAX_TOTAL_INVESTMENT", 1000)
 DEMO_MODE = trader_config.get("DEMO_MODE", True)
 CHECK_INTERVAL = trader_config.get("CHECK_INTERVAL", 60)
+RSI_WINDOW = trader_config.get("RSI_WINDOW", 14)
+SMA_WINDOW = trader_config.get("SMA_WINDOW", 10)
+EMA_WINDOW = trader_config.get("EMA_WINDOW", 10)
+VOLATILITY_MULTIPLIER = trader_config.get("VOLATILITY_MULTIPLIER", 2)
 
-# Variabelen voor runtime
+# Runtime variabelen
+status = load_status(STATUS_FILE)
+transactions = load_transactions(TRANSACTIONS_FILE)
 price_history = []
-transactions = load_transactions(TRANSACTIONS_FILE)  # Historie laden
-current_investment = 0
-buy_price = None
-open_position = False
 
 
 def log_message(message):
-    """Logt een bericht met timestamp."""
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print(f"[{timestamp}] {message}")
 
 
 def get_current_price(symbol):
-    """Haal de huidige prijs op."""
     ticker = bitvavo.tickerPrice({'market': symbol})
     if 'price' not in ticker:
         log_message(f"Fout: Kon de prijs niet ophalen voor {
                     symbol}. Response: {ticker}")
-        raise ValueError(f"Kon de prijs niet ophalen voor {
-                         symbol}. Response: {ticker}")
+        raise ValueError(f"Fout bij ophalen van prijs voor {
+                        symbol}. Response: {ticker}")
     return float(ticker['price'])
 
 # Technische Indicatoren
 
 
-def calculate_rsi(prices, window=14):
+def calculate_rsi(prices):
     deltas = np.diff(prices)
     gains = np.where(deltas > 0, deltas, 0)
     losses = np.where(deltas < 0, abs(deltas), 0)
-    avg_gain = np.mean(gains[-window:])
-    avg_loss = np.mean(losses[-window:])
+    avg_gain = np.mean(gains[-RSI_WINDOW:])
+    avg_loss = np.mean(losses[-RSI_WINDOW:])
     if avg_loss == 0:
         return 100
     rs = avg_gain / avg_loss
     return 100 - (100 / (1 + rs))
 
 
-def calculate_sma(prices, window):
-    return np.mean(prices[-window:])
+def calculate_sma(prices):
+    return np.mean(prices[-SMA_WINDOW:])
 
 
-def calculate_ema(prices, window):
-    weights = np.exp(np.linspace(-1., 0., window))
+def calculate_ema(prices):
+    weights = np.exp(np.linspace(-1., 0., EMA_WINDOW))
     weights /= weights.sum()
     return np.convolve(prices, weights, mode='valid')[-1]
 
 
 def calculate_dynamic_threshold(prices):
     volatility = np.std(prices) / np.mean(prices)
-    return max(1.5, 2 * volatility * 100)
+    return max(THRESHOLD, VOLATILITY_MULTIPLIER * volatility * 100)
+
+# AI Model: Linear Regression
+
+
+def train_model(prices):
+    times = np.arange(len(prices)).reshape(-1, 1)
+    prices = np.array(prices).reshape(-1, 1)
+    model = LinearRegression()
+    model.fit(times, prices)
+    return model
+
+
+def predict_price(model, next_time):
+    return model.predict([[next_time]])[0][0]
 
 # Transacties
 
 
 def record_transaction(side, amount, price):
-    """Registreer een transactie."""
     transaction = {
         'side': side,
         'amount': amount,
@@ -125,23 +149,10 @@ def record_transaction(side, amount, price):
     transactions.append(transaction)
     save_transactions(TRANSACTIONS_FILE, transactions)
 
-
-def generate_report():
-    """Genereer een dagelijkse rapportage van winst/verlies."""
-    total_profit_loss = 0
-    for txn in transactions:
-        if txn['side'] == 'sell':
-            buy_txn = next(
-                (t for t in transactions if t['side'] == 'buy' and t['timestamp'] < txn['timestamp']), None)
-            if buy_txn:
-                profit_loss = (txn['price'] - buy_txn['price']) * txn['amount']
-                total_profit_loss += profit_loss
-    log_message(f"Totale winst/verlies: {total_profit_loss:.2f} EUR")
-    return total_profit_loss
+# Orders
 
 
 def place_order(symbol, side, amount, price):
-    """Plaats een order of toon een simulatie in demo-modus."""
     if DEMO_MODE:
         log_message(f"[DEMO] {side.capitalize()} {amount:.6f} {
                     symbol.split('-')[0]} tegen {price:.2f} EUR.")
@@ -153,59 +164,65 @@ def place_order(symbol, side, amount, price):
         except Exception as e:
             log_message(f"Fout bij het plaatsen van de order: {e}")
 
+# Trading Bot Logic
+
 
 def trading_bot():
-    """Trading bot met verbeterde voorspellingen en rapportage."""
-    global price_history, open_position, buy_price, current_investment
+    global status, price_history
     try:
         while True:
             current_price = get_current_price(SYMBOL)
             price_history.append(current_price)
 
-            # Behoud alleen de laatste WINDOW_SIZE prijzen
             if len(price_history) > WINDOW_SIZE:
                 price_history.pop(0)
 
-            log_message(f"Huidige prijs van {SYMBOL}: {current_price:.2f} EUR")
+            if len(price_history) >= max(RSI_WINDOW, SMA_WINDOW, EMA_WINDOW):
+                model = train_model(price_history)
+                next_price = predict_price(model, len(price_history))
+                price_change = ((next_price - current_price) /
+                                current_price) * 100
 
-            # Analyseer trends als er genoeg data is
-            if len(price_history) >= WINDOW_SIZE:
-                sma = calculate_sma(price_history, WINDOW_SIZE)
-                ema = calculate_ema(price_history, WINDOW_SIZE)
+                sma = calculate_sma(price_history)
+                ema = calculate_ema(price_history)
                 rsi = calculate_rsi(price_history)
+                dynamic_threshold = calculate_dynamic_threshold(price_history)
 
-                log_message(f"SMA: {sma:.2f}, EMA: {ema:.2f}, RSI: {rsi:.2f}")
+                log_message(
+                    f"Actuele prijs: {current_price:.2f} EUR | SMA: {
+                        sma:.2f} | EMA: {ema:.2f} | "
+                    f"RSI: {rsi:.2f} | Voorspelde prijs: {
+                        next_price:.2f} EUR | "
+                    f"Prijsverandering voorspelling: {
+                        price_change:.2f}% | Drempel: {dynamic_threshold:.2f}%"
+                )
 
-                threshold = calculate_dynamic_threshold(price_history)
-
-                if not open_position and current_price > ema and rsi < 70:
-                    # Open een kooppositie
-                    log_message(f"[INFO] Trendanalyse suggereert winst. Koopt {
-                                TRADE_AMOUNT} {SYMBOL.split('-')[0]}.")
+                if not status["open_position"] and current_price > ema and rsi < 70:
+                    log_message(f"[INFO] Koopt {TRADE_AMOUNT} {
+                                SYMBOL.split('-')[0]}.")
                     place_order(SYMBOL, 'buy', TRADE_AMOUNT, current_price)
                     record_transaction('buy', TRADE_AMOUNT, current_price)
-                    buy_price = current_price
-                    open_position = True
-                    current_investment += TRADE_AMOUNT * current_price
+                    status.update(
+                        {"open_position": True, "buy_price": current_price, "last_action": "buy"})
+                    save_status(STATUS_FILE, status)
 
-                elif open_position:
+                elif status["open_position"]:
                     profit_loss = (
-                        (current_price - buy_price) / buy_price) * 100
-                    if profit_loss >= threshold or rsi > 70:
-                        log_message(
-                            f"[INFO] Take-profit bereikt. Verkoopt {TRADE_AMOUNT} {SYMBOL.split('-')[0]}.")
+                        (current_price - status["buy_price"]) / status["buy_price"]) * 100
+                    if profit_loss >= dynamic_threshold or rsi > 70:
+                        log_message(f"[INFO] Verkoopt {TRADE_AMOUNT} {
+                                    SYMBOL.split('-')[0]}.")
                         place_order(SYMBOL, 'sell',
                                     TRADE_AMOUNT, current_price)
                         record_transaction('sell', TRADE_AMOUNT, current_price)
-                        open_position = False
-                        buy_price = None
-                        current_investment -= TRADE_AMOUNT * current_price
+                        status.update(
+                            {"open_position": False, "buy_price": None, "last_action": "sell"})
+                        save_status(STATUS_FILE, status)
 
             time.sleep(CHECK_INTERVAL)
 
     except KeyboardInterrupt:
-        log_message("Trading bot gestopt door gebruiker.")
-        generate_report()
+        log_message("Bot gestopt door gebruiker.")
     except Exception as e:
         log_message(f"Fout: {e}")
 

@@ -9,7 +9,7 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Python-script kopiëren
-COPY aiscalper.py /app/aiscalper.py
+COPY aiscalper.py /app/scalper.py
 
 # Default command instellen
-CMD ["python", "aiscalper.py"] 
+CMD ["python", "scalper.py"] 

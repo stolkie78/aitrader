@@ -45,7 +45,7 @@ This file contains API keys and general bot settings:
 }
 ```
 
-### `trader.json`
+### `scalper.json`
 
 This file specifies trading parameters:
 

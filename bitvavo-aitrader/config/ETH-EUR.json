@@ -1,10 +1,14 @@
 {
     "SYMBOL": "ETH-EUR",
     "WINDOW_SIZE": 10,
-    "THRESHOLD": 2,
+    "THRESHOLD": 0.001,
     "STOP_LOSS": -1,
     "TRADE_AMOUNT": 0.01,
     "MAX_TOTAL_INVESTMENT": 1000,
-    "DEMO_MODE": true,
-    "CHECK_INTERVAL": 60
+    "CHECK_INTERVAL": 15,
+    "RSI_WINDOW": 14,
+    "SMA_WINDOW": 10,
+    "EMA_WINDOW": 10,
+    "VOLATILITY_MULTIPLIER": 2,
+    "DEMO_MODE": true
 }

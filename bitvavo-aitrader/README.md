@@ -1,46 +1,35 @@
 
-# Updated Trader Bot Documentation
+# AITRADER Bot - Documentation
 
 ## Overview
 
-This updated trader bot incorporates advanced features for long-term success, including:
-
-1. **Technical Indicators**: RSI, SMA, and EMA for better trend analysis.
-2. **Dynamic Thresholds**: Adjusts thresholds based on market volatility.
-3. **Data Analysis and Reporting**: Tracks and reports daily profit/loss.
-4. **Trend Analysis**: Uses SMA and EMA to detect trends effectively.
-
----
-
-## Technical Indicators
-
-### RSI (Relative Strength Index)
-
-- Indicates whether a market is overbought (>70) or oversold (<30).
-- Helps refine buy/sell decisions.
-
-### SMA (Simple Moving Average)
-
-- Calculates the average price over a given window.
-
-### EMA (Exponential Moving Average)
-
-- Gives more weight to recent prices for detecting recent trends.
+The AITRADER Bot is a robust tool for medium to long-term trading strategies. It integrates advanced technical indicators like RSI, SMA, and EMA to provide data-driven insights for making profitable trading decisions.
 
 ---
 
 ## Key Features
 
-1. **RSI**: Identifies overbought/oversold conditions.
-2. **SMA/EMA**: Tracks moving averages for trend detection.
-3. **Dynamic Thresholds**: Adapts to market volatility.
-4. **Daily Reporting**: Logs transactions and calculates profit/loss.
+1. **Advanced Technical Indicators**:
+   - **RSI**: Identifies overbought or oversold conditions.
+   - **SMA**: Tracks simple moving averages for trend analysis.
+   - **EMA**: Uses exponential moving averages for better response to recent price changes.
+
+2. **Dynamic Thresholds**:
+   - Automatically adjusts thresholds based on market volatility, allowing flexible trading strategies.
+
+3. **Daily Reporting**:
+   - Logs and calculates daily profit or loss, keeping track of all transactions in `transactions.json`.
+
+4. **Configurable Parameters**:
+   - Fully customizable via `config.json` and `trader.json` to adapt to different markets and strategies.
 
 ---
 
-## Example Configuration Files
+## Configuration Files
 
 ### `config.json`
+
+This file contains API credentials and general settings:
 
 ```json
 {
@@ -55,42 +44,75 @@ This updated trader bot incorporates advanced features for long-term success, in
 
 ### `trader.json`
 
+This file allows customization of trading parameters:
+
 ```json
 {
     "SYMBOL": "BTC-EUR",
-    "WINDOW_SIZE": 20,
-    "THRESHOLD": 3,
-    "STOP_LOSS": -2,
+    "WINDOW_SIZE": 10,
+    "THRESHOLD": 2,
+    "STOP_LOSS": -1,
     "TRADE_AMOUNT": 0.01,
-    "MAX_TOTAL_INVESTMENT": 5000,
+    "MAX_TOTAL_INVESTMENT": 1000,
     "DEMO_MODE": true,
-    "CHECK_INTERVAL": 3600
+    "CHECK_INTERVAL": 60,
+    "RSI_WINDOW": 14,
+    "SMA_WINDOW": 10,
+    "EMA_WINDOW": 10,
+    "VOLATILITY_MULTIPLIER": 2
 }
 ```
 
 ---
 
-## How to Use
+## Usage Instructions
 
-1. **Setup `config.json`**:
-   - Add your Bitvavo API keys and preferences.
+1. **Configure API Keys and Preferences**:
+   - Edit `config.json` with your Bitvavo API credentials.
+   - Customize `trader.json` with your desired trading strategy.
 
-2. **Setup `trader.json`**:
-   - Define the trading parameters, such as `SYMBOL`, `THRESHOLD`, and `CHECK_INTERVAL`.
+2. **Install Dependencies**:
+   - Install the required Python packages:
+     ```bash
+     pip install -r requirements.txt
+     ```
 
-3. **Run the bot**:
-   - Execute the script to start trading.
+3. **Run the Bot**:
+   - Start the bot using:
+     ```bash
+     python trader.py
+     ```
+
+4. **Monitor and Analyze**:
+   - View real-time logs in the console.
+   - Analyze transactions in `transactions.json`.
 
 ---
 
-## Future Improvements
+## How It Works
 
-1. Backtesting to analyze performance.
-2. Integration with additional technical indicators.
-3. Automated alerts for key events.
+1. **Price Monitoring**:
+   - Fetches current prices and tracks historical data.
+
+2. **Technical Analysis**:
+   - Uses RSI, SMA, EMA, and dynamic thresholds to make buy/sell decisions.
+
+3. **Transaction Logging**:
+   - All transactions are saved in `transactions.json` for historical analysis.
+
+4. **Daily Reporting**:
+   - Automatically generates a daily profit/loss report.
+
+---
+
+## Future Enhancements
+
+- Add machine learning models for more accurate predictions.
+- Implement notifications for trade alerts.
+- Enhance backtesting capabilities to validate strategies.
 
 ---
 
 ## Disclaimer
 
-This script is for educational purposes only. Use at your own risk when trading real funds.
+This bot is for educational purposes only. Use at your own risk when trading real funds. Always test thoroughly in demo mode first.

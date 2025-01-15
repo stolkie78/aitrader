@@ -1,33 +1,41 @@
+import json
 from python_bitvavo_api.bitvavo import Bitvavo
 from sklearn.linear_model import LinearRegression
 import numpy as np
 import time
 from datetime import datetime
 
-# Configureer je API-sleutels hier
-API_KEY = 'jouw_api_key'
-API_SECRET = 'jouw_api_secret'
+# Laad configuratie vanuit JSON-bestand
+def load_config(file_path):
+    with open(file_path, 'r') as f:
+        return json.load(f)
 
-# Instantie van Bitvavo API
+config = load_config('config.json')
+# Bitvavo-instantie aanmaken met configuratie
 bitvavo = Bitvavo({
-    'APIKEY': API_KEY,
-    'APISECRET': API_SECRET,
-    'RESTURL': 'https://api.bitvavo.com/v2',
-    'WSURL': 'wss://ws.bitvavo.com/v2/',
-    'ACCESSWINDOW': 10000,
-    'DEBUGGING': False
+    'APIKEY': config.get('API_KEY'),
+    'APISECRET': config.get('API_SECRET'),
+    'RESTURL': config.get('RESTURL', 'https://api.bitvavo.com/v2'),
+    'WSURL': config.get('WSURL', 'wss://ws.bitvavo.com/v2/'),
+    'ACCESSWINDOW': config.get('ACCESSWINDOW', 10000),
+    'DEBUGGING': config.get('DEBUGGING', False)
 })
 
-# Configuratie
-SYMBOLS = ['BTC-EUR', 'ETH-EUR', 'XRP-EUR']  # Lijst van munten
-WINDOW_SIZE = 10  # Historische datapunten voor analyse
-THRESHOLD = 2  # Percentage prijsverandering voor koop/verkoopacties
-MAX_TOTAL_INVESTMENT = 1000  # Maximum totaal investeringsbedrag in EUR
-current_investment = 0  # Houdt bij hoeveel er momenteel is geïnvesteerd
-DAILY_DATA = {symbol: {'transactions': [], 'prices': []} for symbol in SYMBOLS}
+# Configuratie laden vanuit trader.json
+config = load_config('trader.json')
+
+# Toewijzen van variabelen uit de configuratie
+SYMBOLS = config.get("SYMBOLS", [])
+WINDOW_SIZE = config.get("WINDOW_SIZE", 10)
+THRESHOLD = config.get("THRESHOLD", 2)
+MAX_TOTAL_INVESTMENT = config.get("MAX_TOTAL_INVESTMENT", 1000)
+current_investment = config.get("current_investment", 0)
+DAILY_DATA = config.get("DAILY_DATA", {})
 START_TIME = time.time()
-DEMO_MODE = True  # Zet op False om echte trades uit te voeren
-SLEEP_INTERVAL = 60  # Interval tussen runs in seconden
+DEMO_MODE = config.get("DEMO_MODE", True)
+SLEEP_INTERVAL = config.get("SLEEP_INTERVAL", 3600)
+
+print(f"Trading bot gestart met configuratie: {config}")
 
 
 def get_current_price(symbol):
@@ -98,7 +106,7 @@ def place_order(symbol, side, amount, price):
     else:
         try:
             order = bitvavo.placeOrder(symbol, side, 'market', {
-                                       'amount': str(amount)})
+                                    'amount': str(amount)})
             print(f"Order geplaatst: {order}")
         except Exception as e:
             print(f"Fout bij het plaatsen van de order: {e}")

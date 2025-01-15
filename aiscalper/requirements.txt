@@ -1,0 +1,3 @@
+python-bitvavo-api
+scikit-learn
+numpy

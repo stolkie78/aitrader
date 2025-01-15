@@ -1,0 +1,8 @@
+{
+  "SYMBOL": "BTC-EUR",
+  "THRESHOLD": 0.5,
+  "STOP_LOSS": -0.7,
+  "TRADE_AMOUNT": 0.005,
+  "CHECK_INTERVAL": 10,
+  "DEMO_MODE": true
+}

@@ -1,29 +1,36 @@
 from python_bitvavo_api.bitvavo import Bitvavo
+import json
 import time
 from datetime import datetime
 
-# Configureer je API-sleutels hier
-API_KEY = 'jouw_api_key'
-API_SECRET = 'jouw_api_secret'
+# Laad configuratie vanuit JSON-bestand
+def load_config(file_path):
+    with open(file_path, 'r') as f:
+        return json.load(f)
 
-# Instantie van Bitvavo API
+# Configuratie laden uit config.json
+config = load_config('config.json')
+# Bitvavo-instantie aanmaken met configuratie
 bitvavo = Bitvavo({
-    'APIKEY': API_KEY,
-    'APISECRET': API_SECRET,
-    'RESTURL': 'https://api.bitvavo.com/v2',
-    'WSURL': 'wss://ws.bitvavo.com/v2/',
-    'ACCESSWINDOW': 10000,
-    'DEBUGGING': False
+    'APIKEY': config.get('API_KEY'),
+    'APISECRET': config.get('API_SECRET'),
+    'RESTURL': config.get('RESTURL', 'https://api.bitvavo.com/v2'),
+    'WSURL': config.get('WSURL', 'wss://ws.bitvavo.com/v2/'),
+    'ACCESSWINDOW': config.get('ACCESSWINDOW', 10000),
+    'DEBUGGING': config.get('DEBUGGING', False)
 })
 
-# Configuratie
-SYMBOL = 'BTC-EUR'  # Trading paar
-THRESHOLD = 0.5  # Percentage winst voor take-profit
-STOP_LOSS = -0.7  # Percentage verlies om te stoppen
-TRADE_AMOUNT = 0.005  # Hoeveelheid BTC per trade
-CHECK_INTERVAL = 10  # Interval in seconden tussen prijschecks
-DEMO_MODE = True  # Zet op False om echte trades uit te voeren
+# Configuratie laden vanuit trader.json
+config = load_config('trader.json')
+# Gebruik de waardes uit de trader.json
+SYMBOL = config.get("SYMBOL")
+THRESHOLD = config.get("THRESHOLD")
+STOP_LOSS = config.get("STOP_LOSS")
+TRADE_AMOUNT = config.get("TRADE_AMOUNT")
+CHECK_INTERVAL = config.get("CHECK_INTERVAL")
+DEMO_MODE = config.get("DEMO_MODE")
 
+print(f"Trading bot gestart met configuratie: {config}")
 
 def log_message(message):
     """Logt een bericht met timestamp."""
@@ -50,7 +57,7 @@ def place_order(symbol, side, amount, price):
     else:
         try:
             order = bitvavo.placeOrder(symbol, side, 'market', {
-                                       'amount': str(amount)})
+                                    'amount': str(amount)})
             log_message(f"Order geplaatst: {order}")
         except Exception as e:
             log_message(f"Fout bij het plaatsen van de order: {e}")

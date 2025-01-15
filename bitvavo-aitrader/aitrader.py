@@ -13,6 +13,25 @@ def load_config(file_path):
         return json.load(f)
 
 
+# Status en transacties laden/opslaan
+TRANSACTIONS_FILE = "transactions.json"
+
+
+def load_transactions(file_path):
+    """Laad transacties uit een bestand."""
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
+
+
+def save_transactions(file_path, transactions):
+    """Sla transacties op in een bestand."""
+    with open(file_path, 'w') as f:
+        json.dump(transactions, f)
+
+
 # Configuratie laden
 config = load_config('config.json')
 
@@ -41,7 +60,7 @@ CHECK_INTERVAL = trader_config.get("CHECK_INTERVAL", 60)
 
 # Variabelen voor runtime
 price_history = []
-transactions = []
+transactions = load_transactions(TRANSACTIONS_FILE)  # Historie laden
 current_investment = 0
 buy_price = None
 open_position = False
@@ -60,52 +79,51 @@ def get_current_price(symbol):
         log_message(f"Fout: Kon de prijs niet ophalen voor {
                     symbol}. Response: {ticker}")
         raise ValueError(f"Kon de prijs niet ophalen voor {
-                        symbol}. Response: {ticker}")
+                         symbol}. Response: {ticker}")
     return float(ticker['price'])
+
+# Technische Indicatoren
 
 
 def calculate_rsi(prices, window=14):
-    """Bereken de Relative Strength Index (RSI)."""
     deltas = np.diff(prices)
     gains = np.where(deltas > 0, deltas, 0)
     losses = np.where(deltas < 0, abs(deltas), 0)
-
     avg_gain = np.mean(gains[-window:])
     avg_loss = np.mean(losses[-window:])
-
     if avg_loss == 0:
         return 100
-
     rs = avg_gain / avg_loss
     return 100 - (100 / (1 + rs))
 
 
 def calculate_sma(prices, window):
-    """Bereken Simple Moving Average (SMA)."""
     return np.mean(prices[-window:])
 
 
 def calculate_ema(prices, window):
-    """Bereken Exponential Moving Average (EMA)."""
     weights = np.exp(np.linspace(-1., 0., window))
     weights /= weights.sum()
     return np.convolve(prices, weights, mode='valid')[-1]
 
 
 def calculate_dynamic_threshold(prices):
-    """Bereken een dynamische drempel op basis van volatiliteit."""
     volatility = np.std(prices) / np.mean(prices)
-    return max(1.5, 2 * volatility * 100)  # Minimum van 1.5%
+    return max(1.5, 2 * volatility * 100)
+
+# Transacties
 
 
 def record_transaction(side, amount, price):
     """Registreer een transactie."""
-    transactions.append({
+    transaction = {
         'side': side,
         'amount': amount,
         'price': price,
         'timestamp': time.time()
-    })
+    }
+    transactions.append(transaction)
+    save_transactions(TRANSACTIONS_FILE, transactions)
 
 
 def generate_report():
@@ -130,7 +148,7 @@ def place_order(symbol, side, amount, price):
     else:
         try:
             order = bitvavo.placeOrder(symbol, side, 'market', {
-                                    'amount': str(amount)})
+                                       'amount': str(amount)})
             log_message(f"Order geplaatst: {order}")
         except Exception as e:
             log_message(f"Fout bij het plaatsen van de order: {e}")

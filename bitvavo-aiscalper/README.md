@@ -1,150 +1,124 @@
 
-# Bitvavo Scalping Trading Bot
+# Scalper Bot - Version 0.1
 
-Deze trading bot is ontwikkeld om daytrading mogelijk te maken op het Bitvavo-platform. De bot gebruikt configuratiebestanden (`config.json` en `trader.json`) om API-sleutels, handelsparameters en andere instellingen te laden. De bot ondersteunt een demo-modus waarin trades worden gesimuleerd zonder echte transacties uit te voeren.
+## Overview
 
----
-
-## Inhoud
-
-- [Functies](#functies)
-- [Vereisten](#vereisten)
-- [Installatie](#installatie)
-- [Gebruik](#gebruik)
-- [Configuratiebestanden](#configuratiebestanden)
-- [Docker-gebruik](#docker-gebruik)
+The **Scalper Bot** is a powerful trading tool designed for short-term trading strategies. It uses AI-driven predictions, detailed transaction tracking, and restartable functionality to provide a robust and reliable trading experience.
 
 ---
 
-## Functies
+## Key Features
 
-- Verbinden met de Bitvavo API.
-- Automatisch kopen en verkopen van cryptocurrency op basis van vooraf ingestelde parameters.
-- Ondersteuning voor een demo-modus voor simulaties.
-- Logging met tijdstempels voor eenvoudige debugging.
+1. **Daily Reporting**
+   - Automatically calculates and reports daily profit/loss.
+   - Saves all transactions in a `transactions.json` file for historical analysis.
 
----
+2. **Restartable Status**
+   - The bot saves its current state in `bot_status.json`.
+   - Open positions and the last action are restored upon restart.
 
-## Vereisten
+3. **AI-Based Predictions**
+   - Uses linear regression to predict price movements based on a configurable window (`WINDOW_SIZE`).
 
-- **Python**: 3.8 of hoger
-- **Modules**:
-  - `python-bitvavo-api`
-  - `json`
-  - `datetime`
-  - `time`
+4. **Flexible Configuration**
+   - Configurable via `config.json` and `trader.json` for easy adaptation to different trading strategies.
 
----
-
-## Installatie
-
-1. **Clone de repository**:
-   ```bash
-   git clone https://github.com/jouw-repo/bitvavo-trading-bot.git
-   cd bitvavo-trading-bot
-   ```
-
-2. **Installeer de vereisten**:
-   ```bash
-   pip install python-bitvavo-api
-   ```
-
-3. **Voeg configuratiebestanden toe**:
-   Maak `config.json` en `trader.json` aan in de projectmap (zie [Configuratiebestanden](#configuratiebestanden)).
+5. **Demo Mode**
+   - Allows users to simulate trading without executing real trades, enabling safe testing of strategies.
 
 ---
 
-## Gebruik
-
-Start de bot met:
-```bash
-python trading_bot.py
-```
-
-Om de bot in demo-modus uit te voeren (standaard geconfigureerd), stel je `DEMO_MODE` in op `true` in `trader.json`.
-
----
-
-## Configuratiebestanden
+## Configuration Files
 
 ### `config.json`
 
-Dit bestand bevat je Bitvavo API-sleutels en andere instellingen.
+This file contains API keys and general bot settings:
 
 ```json
 {
-  "API_KEY": "jouw_api_key",
-  "API_SECRET": "jouw_api_secret",
-  "RESTURL": "https://api.bitvavo.com/v2",
-  "WSURL": "wss://ws.bitvavo.com/v2/",
-  "ACCESSWINDOW": 10000,
-  "DEBUGGING": false
+    "API_KEY": "your_api_key",
+    "API_SECRET": "your_api_secret",
+    "RESTURL": "https://api.bitvavo.com/v2",
+    "WSURL": "wss://ws.bitvavo.com/v2/",
+    "ACCESSWINDOW": 10000,
+    "DEBUGGING": false
 }
 ```
 
 ### `trader.json`
 
-Dit bestand bevat de handelsparameters.
+This file specifies trading parameters:
 
 ```json
 {
-  "SYMBOLS": ["BTC-EUR", "ETH-EUR", "XRP-EUR"],
-  "WINDOW_SIZE": 10,
-  "THRESHOLD": 2,
-  "MAX_TOTAL_INVESTMENT": 1000,
-  "current_investment": 0,
-  "DAILY_DATA": {
-    "BTC-EUR": {"transactions": [], "prices": []},
-    "ETH-EUR": {"transactions": [], "prices": []},
-    "XRP-EUR": {"transactions": [], "prices": []}
-  },
-  "START_TIME": 1700000000.0,
-  "DEMO_MODE": true,
-  "SLEEP_INTERVAL": 3600
+    "SYMBOL": "BTC-EUR",
+    "WINDOW_SIZE": 10,
+    "THRESHOLD": 0.5,
+    "STOP_LOSS": -0.7,
+    "TRADE_AMOUNT": 0.01,
+    "CHECK_INTERVAL": 10,
+    "DEMO_MODE": true
 }
 ```
 
 ---
 
-## Docker-gebruik
+## How It Works
 
-1. **Bouw de Docker-image**:
-   Gebruik de volgende Dockerfile om de image te bouwen:
+1. **Price Monitoring**:
+   - The bot fetches current prices and tracks historical price data.
 
-   ```dockerfile
-   # Base image
-   FROM python:3.10-slim
+2. **Prediction and Decision Making**:
+   - It predicts future prices using linear regression and decides to buy or sell based on configured thresholds.
 
-   # Werkdirectory instellen
-   WORKDIR /app
+3. **Transaction Tracking**:
+   - Each transaction is logged in `transactions.json`, preserving a complete trade history.
 
-   # Vereiste modules kopiëren en installeren
-   COPY requirements.txt /app/requirements.txt
-   RUN pip install --no-cache-dir -r requirements.txt
+4. **Daily Reports**:
+   - At the end of each day, the bot generates a report of daily profit or loss.
 
-   # Configuratie- en Python-script kopiëren
-   COPY config.json /app/config.json
-   COPY trader.json /app/trader.json
-   COPY trading_bot.py /app/trading_bot.py
+---
 
-   # Default command instellen
-   CMD ["python", "trading_bot.py"]
-   ```
+## Usage Instructions
 
-   Bouw de image:
-   ```bash
-   docker build -t aiscalper:0.1 .
-   ```
+1. **Setup Configuration Files**:
+   - Edit `config.json` with your Bitvavo API credentials.
+   - Adjust `trader.json` to fit your trading strategy.
 
-2. **Start de container**:
-   ```bash
-   docker run -v $(pwd)/config.json:/app/config.json -v $(pwd)/trader.json:/app/trader.json aiscalper:0.1
-   ```
+2. **Run the Bot**:
+   - Start the bot using Python:  
+     ```bash
+     python scalper.py
+     ```
 
-In de bovenstaande commando's wordt aangenomen dat de configuratiebestanden (`config.json` en `trader.json`) zich in de huidige directory bevinden.
+3. **Monitor Logs**:
+   - View real-time logs in the console for updates and actions taken by the bot.
+
+4. **Check Reports**:
+   - View daily reports of profit/loss in the console or analyze the `transactions.json` file for detailed transaction history.
+
+---
+
+## Limitations
+
+- The bot relies on linear regression, which may not always account for sudden market changes.
+- For real trading, ensure thresholds and stop-loss values align with your risk tolerance.
+
+---
+
+## Future Improvements
+
+1. **Backtesting**:
+   - Simulate past performance using historical data.
+
+2. **Additional Indicators**:
+   - Integrate more technical indicators like RSI or MACD.
+
+3. **Enhanced Reporting**:
+   - Provide more detailed analytics and visualization of trade performance.
 
 ---
 
 ## Disclaimer
 
-Deze bot is bedoeld voor educatieve doeleinden. Gebruik op eigen risico.
+This bot is for educational purposes only. Use at your own risk. Always test in demo mode before engaging in real trading.

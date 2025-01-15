@@ -99,8 +99,8 @@ def send_to_slack(message):
 # Logfunctie
 def log_message(message):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"{SYMBOL}: [{timestamp}] {message}")
-    send_to_slack(f"{SYMBOL}: {message}")
+    print(f"[SCALPER][{SYMBOL}][{timestamp}] {message}")
+    send_to_slack(f"[SCALPER][{SYMBOL}] {message}")
 
 def get_current_price(symbol):
     """Haal de huidige prijs op."""
@@ -234,5 +234,5 @@ def trading_bot():
 
 # Start de bot
 if __name__ == "__main__":
-    log_message(f"Scalping bot gestart met herstartbare status voor {SYMBOL}.")
+    log_message(f"Scalping bot gestart")
     trading_bot()

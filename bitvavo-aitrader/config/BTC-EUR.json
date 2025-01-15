@@ -1,0 +1,10 @@
+{
+    "SYMBOL": "BTC-EUR",
+    "WINDOW_SIZE": 10,
+    "THRESHOLD": 2,
+    "STOP_LOSS": -1,
+    "TRADE_AMOUNT": 0.01,
+    "MAX_TOTAL_INVESTMENT": 1000,
+    "DEMO_MODE": true,
+    "CHECK_INTERVAL": 60
+}

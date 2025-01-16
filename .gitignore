@@ -3,5 +3,5 @@
 */transactions*.json
 */scalper.json
 */slack.json
-*/config/*json
 */*.json
+*/config/*.json

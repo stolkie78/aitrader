@@ -7,6 +7,8 @@ import time
 from datetime import datetime
 import os
 
+version = "0.6"
+
 # Configuratiebestanden
 DATA_DIR = "data"
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -83,7 +85,7 @@ price_history = []  # Historische prijzen
 start_time = datetime.now()  # Starttijd voor dagelijkse rapportage
 
 
-print(f"Scalping bot gestart met configuratie: {scalper_config}")
+
 
     # Slack-bericht sturen
 def send_to_slack(message):
@@ -231,7 +233,8 @@ def trading_bot():
 
 # Start de bot
 if __name__ == "__main__":
-    log_message(f"[INFO] Scalping bot gestart")
+    log_message(f"[INFO] Scalping bot {version} gestart")
+    log_message(f"Configuratie: {scalper_config}")
     if status["open_position"]:
         open_buy_price = status["buy_price"]
         print(f"Reeds openstaande positie voor {SYMBOL} gekocht voor {open_buy_price}")

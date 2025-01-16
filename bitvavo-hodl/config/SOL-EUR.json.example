@@ -1,0 +1,10 @@
+{
+    "SYMBOL": "SOL-EUR",
+    "TRADE_AMOUNT": 1,
+    "CHECK_INTERVAL_DAYS": 7,
+    "RSI_OVERBOUGHT": 70,
+    "RSI_OVERSOLD": 30,
+    "SMA_WINDOW": 200,
+    "AI_PREDICTION_WINDOW": 30,
+    "DEMO_MODE": true
+}

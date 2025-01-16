@@ -7,7 +7,10 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Python-script kopiëren
-COPY trader.py /app/trader.py
+COPY hodl.py /app/hodl.py
+
+# Volume aanmaken voor data
+VOLUME /app/data
 
 # Default command instellen
-CMD ["python", "trader.py"] 
+CMD ["python", "hodl.py"] 

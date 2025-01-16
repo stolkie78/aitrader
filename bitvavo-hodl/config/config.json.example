@@ -1,0 +1,8 @@
+{
+  "API_KEY": "",
+  "API_SECRET": "",
+  "RESTURL": "https://api.bitvavo.com/v2",
+  "WSURL": "wss://ws.bitvavo.com/v2/",
+  "ACCESSWINDOW": 10000,
+  "DEBUGGING": false
+}

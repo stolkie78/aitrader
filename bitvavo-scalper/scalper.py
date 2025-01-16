@@ -12,8 +12,8 @@ def load_config(file_path):
         return json.load(f)
 
 # Status en transacties laden/opslaan
-STATUS_FILE = "bot_status_scalper.json"
-TRANSACTIONS_FILE = "transactions_scalper.json"
+STATUS_FILE = "bot_status.json"
+TRANSACTIONS_FILE = "transactions.json"
 
 def load_status(file_path):
     """Laad de huidige status van de bot."""
@@ -62,8 +62,8 @@ print(f"Slack configuratie: {slack_config}")
 # Configuratie laden vanuit trader.json
 scalper_config = load_config('scalper.json')
 SYMBOL = scalper_config.get("SYMBOL")
-THRESHOLD_BUY = scalper_config.get("THRESHOLD")
-THRESHOLD_SELL = scalper_config.get("THRESHOLD")
+THRESHOLD_BUY = scalper_config.get("THRESHOLD_BUY")
+THRESHOLD_SELL = scalper_config.get("THRESHOLD_SELL")
 STOP_LOSS = scalper_config.get("STOP_LOSS")
 TRADE_AMOUNT = scalper_config.get("TRADE_AMOUNT")
 CHECK_INTERVAL = scalper_config.get("CHECK_INTERVAL")
@@ -94,7 +94,7 @@ def log_message(message):
         RUNSTATUS = "[PROD]"
 
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"${RUNSTATUS}[SCALPER][{SYMBOL}][{timestamp}] {message}")
+    print(f"{RUNSTATUS}[SCALPER][{SYMBOL}][{timestamp}] {message}")
     send_to_slack(f"{RUNSTATUS}[SCALPER][{SYMBOL}] {message}")
 
 def get_current_price(symbol):
@@ -172,6 +172,7 @@ def trading_bot():
 
             print(f"PRICE {SYMBOL}:{current_price:.2f} COUNT:{len(price_history)}/{WINDOW_SIZE} CHECK_INTERVAL:{CHECK_INTERVAL}")
 
+
             # Alleen trainen als we genoeg data hebben
             if len(price_history) == WINDOW_SIZE:
                 model = train_model(price_history)
@@ -180,9 +181,9 @@ def trading_bot():
 
                 print(f"Voorspelde prijs: {next_price:.2f} EUR | Verandering: {price_change:.2f}%")
 
-                if not status["open_position"] and price_change >= THRESHOLD_BUY:
+                if not status["open_position"] and price_change <= THRESHOLD_BUY:
                     # Kooppositie openen
-                    log_message(f"[INFO] Koopt {TRADE_AMOUNT} ${SYMBOL} tegen {current_price:.2f} EUR.")
+                    log_message(f"[INFO] Koopt {TRADE_AMOUNT} {SYMBOL} tegen {current_price:.2f} EUR.")
                     place_order(SYMBOL, 'buy', TRADE_AMOUNT, current_price)
                     record_transaction('buy', TRADE_AMOUNT, current_price)
                     status.update({"last_action": "buy", "buy_price": current_price, "open_position": True})
@@ -224,4 +225,7 @@ def trading_bot():
 # Start de bot
 if __name__ == "__main__":
     log_message(f"[INFO] Scalping bot gestart")
+    if status["open_position"]:
+        open_buy_price = status["buy_price"]
+        print(f"Reeds openstaande positie voor {SYMBOL} gekocht voor {open_buy_price}")
     trading_bot()

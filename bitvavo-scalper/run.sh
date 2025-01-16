@@ -18,6 +18,8 @@ docker run --name scalper_${CONFIG} -d \
   -v $(pwd)/config/config.json:/app/config.json \
   -v $(pwd)/config/${CONFIG}.json:/app/scalper.json \
   -v $(pwd)/config/slack.json:/app/slack.json \
+  -v $(pwd)/data/bot_status.json:/app/bot_status.json \
+  -v $(pwd)/data/transaction.json:/app/transactions.json \
   bitvavo-scalper:latest
-
+sleep 30
 docker logs scalper_${CONFIG}

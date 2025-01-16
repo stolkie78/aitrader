@@ -12,8 +12,8 @@ def load_config(file_path):
         return json.load(f)
 
 # Status en transacties laden/opslaan
-STATUS_FILE = "bot_status.json"
-TRANSACTIONS_FILE = "transactions.json"
+STATUS_FILE = "data/bot_status.json"
+TRANSACTIONS_FILE = "data/transactions.json"
 
 def load_status(file_path):
     """Laad de huidige status van de bot."""

@@ -13,5 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Python-script kopiëren
 COPY scalper.py /app/scalper.py
 
+# Volume aanmaken voor data
+VOLUME /app/data
+
 # Default command instellen
 CMD ["python", "scalper.py"] 

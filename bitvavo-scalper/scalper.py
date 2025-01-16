@@ -6,8 +6,9 @@ import numpy as np
 import time
 from datetime import datetime
 import os
+from decimal import Decimal
 
-version = "0.6"
+version = "0.7"
 
 # Configuratiebestanden
 DATA_DIR = "data"
@@ -178,8 +179,10 @@ def trading_bot():
 
             # Behoud alleen de laatste WINDOW_SIZE prijzen
             if len(price_history) > WINDOW_SIZE: price_history.pop(0)
-
-            print(f"PRICE {SYMBOL}:{current_price:.2f} COUNT:{len(price_history)}/{WINDOW_SIZE} CHECK_INTERVAL:{CHECK_INTERVAL}")
+            
+            formatted_current_price = str(Decimal(current_price))
+            if len(price_history) < WINDOW_SIZE:
+                print(f"AI Learning: {SYMBOL}:{formatted_current_price} COUNT:{len(price_history)}/{WINDOW_SIZE} CHECK_INTERVAL:{CHECK_INTERVAL}")
 
 
             # Alleen trainen als we genoeg data hebben
@@ -188,11 +191,14 @@ def trading_bot():
                 next_price = predict_price(model, len(price_history))
                 price_change = ((next_price - current_price) / current_price) * 100
 
-                print(f"Voorspelde prijs: {next_price:.2f} EUR | Verandering: {price_change:.2f}%")
+                formatted_next_price = str(Decimal(next_price))
+                formatted_price_change = str(Decimal(price_change))
+                print(
+                    f"Voorspelde prijs: {formatted_next_price} EUR | Verandering: {price_change:.2f}%")
 
                 if not status["open_position"] and price_change <= THRESHOLD_BUY:
                     # Kooppositie openen
-                    log_message(f"[INFO] Koopt {TRADE_AMOUNT} {SYMBOL} tegen {current_price:.2f} EUR.")
+                    log_message(f"[INFO] Koopt {TRADE_AMOUNT} {SYMBOL} tegen {formatted_current_price} EUR.")
                     place_order(SYMBOL, 'buy', TRADE_AMOUNT, current_price)
                     record_transaction('buy', TRADE_AMOUNT, current_price)
                     status.update({"last_action": "buy", "buy_price": current_price, "open_position": True})
@@ -203,14 +209,14 @@ def trading_bot():
                     profit_loss = (
                         (current_price - status["buy_price"]) / status["buy_price"]) * 100
                     if profit_loss >= THRESHOLD_SELL:
-                        log_message(f"[INFO] Verkoopt {TRADE_AMOUNT} tegen {current_price:.2f} EUR (+{profit_loss:.2f}%).")
+                        log_message(f"[INFO] Verkoopt {TRADE_AMOUNT} tegen {formatted_current_price} EUR (+{profit_loss:.2f}%).")
                         place_order(SYMBOL, 'sell',TRADE_AMOUNT, current_price)
                         record_transaction('sell', TRADE_AMOUNT, current_price)
                         status.update(
                             {"last_action": "sell", "buy_price": None, "open_position": False})
                         save_status(STATUS_FILE, status)
                     elif profit_loss <= STOP_LOSS:
-                        log_message(f"[INFO] Stop-loss bereikt! Verkoopt {TRADE_AMOUNT} tegen {current_price:.2f} EUR ({profit_loss:.2f}%).")
+                        log_message(f"[INFO] Stop-loss bereikt! Verkoopt {TRADE_AMOUNT} tegen {formatted_current_price} EUR ({profit_loss:.2f}%).")
                         place_order(SYMBOL, 'sell',TRADE_AMOUNT, current_price)
                         record_transaction('sell', TRADE_AMOUNT, current_price)
                         status.update(

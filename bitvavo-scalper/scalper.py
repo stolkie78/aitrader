@@ -54,17 +54,6 @@ bitvavo = Bitvavo({
     'DEBUGGING': config.get('DEBUGGING', False)
 })
 
-# Slack
-slack = Bitvavo({
-    'APIKEY': config.get('API_KEY'),
-    'APISECRET': config.get('API_SECRET'),
-    'RESTURL': config.get('RESTURL', 'https://api.bitvavo.com/v2'),
-    'WSURL': config.get('WSURL', 'wss://ws.bitvavo.com/v2/'),
-    'ACCESSWINDOW': config.get('ACCESSWINDOW', 10000),
-    'DEBUGGING': config.get('DEBUGGING', False)
-})
-
-
 # Configuratie laden uit slack.json
 slack_config = load_config('slack.json')
 SLACK_WEBHOOK_URL = slack_config.get("SLACK_WEBHOOK_URL")
@@ -73,7 +62,8 @@ print(f"Slack configuratie: {slack_config}")
 # Configuratie laden vanuit trader.json
 scalper_config = load_config('scalper.json')
 SYMBOL = scalper_config.get("SYMBOL")
-THRESHOLD = scalper_config.get("THRESHOLD")
+THRESHOLD_BUY = scalper_config.get("THRESHOLD")
+THRESHOLD_SELL = scalper_config.get("THRESHOLD")
 STOP_LOSS = scalper_config.get("STOP_LOSS")
 TRADE_AMOUNT = scalper_config.get("TRADE_AMOUNT")
 CHECK_INTERVAL = scalper_config.get("CHECK_INTERVAL")
@@ -98,9 +88,14 @@ def send_to_slack(message):
 
 # Logfunctie
 def log_message(message):
+    if DEMO_MODE:
+        RUNSTATUS = "[DEMO]"
+    else:
+        RUNSTATUS = "[PROD]"
+
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[SCALPER][{SYMBOL}][{timestamp}] {message}")
-    send_to_slack(f"[SCALPER][{SYMBOL}] {message}")
+    print(f"${RUNSTATUS}[SCALPER][{SYMBOL}][{timestamp}] {message}")
+    send_to_slack(f"{RUNSTATUS}[SCALPER][{SYMBOL}] {message}")
 
 def get_current_price(symbol):
     """Haal de huidige prijs op."""
@@ -158,8 +153,7 @@ def place_order(symbol, side, amount, price):
         log_message(f"[DEMO] {side.capitalize()} {amount:.6f} {symbol.split('-')[0]} tegen {price:.2f} EUR.")
     else:
         try:
-            order = bitvavo.placeOrder(symbol, side, 'market', {
-                                    'amount': str(amount)})
+            order = bitvavo.placeOrder(symbol, side, 'market', {'amount': str(amount)})
             log_message(f"[INFO] Order geplaatst: {order}")
         except Exception as e:
             log_message(f"[ERROR] Fout bij het plaatsen van de order: {e}")
@@ -174,8 +168,7 @@ def trading_bot():
             price_history.append(current_price)
 
             # Behoud alleen de laatste WINDOW_SIZE prijzen
-            if len(price_history) > WINDOW_SIZE:
-                price_history.pop(0)
+            if len(price_history) > WINDOW_SIZE: price_history.pop(0)
 
             print(f"PRICE {SYMBOL}:{current_price:.2f} COUNT:{len(price_history)}/{WINDOW_SIZE} CHECK_INTERVAL:{CHECK_INTERVAL}")
 
@@ -183,36 +176,32 @@ def trading_bot():
             if len(price_history) == WINDOW_SIZE:
                 model = train_model(price_history)
                 next_price = predict_price(model, len(price_history))
-                price_change = ((next_price - current_price) /
-                                current_price) * 100
+                price_change = ((next_price - current_price) / current_price) * 100
 
                 print(f"Voorspelde prijs: {next_price:.2f} EUR | Verandering: {price_change:.2f}%")
 
-                if not status["open_position"] and price_change >= THRESHOLD:
+                if not status["open_position"] and price_change >= THRESHOLD_BUY:
                     # Kooppositie openen
-                    log_message(f"[INFO] Voorspelling suggereert winst! Koopt {TRADE_AMOUNT} ${SYMBOL} tegen {current_price:.2f} EUR.")
+                    log_message(f"[INFO] Koopt {TRADE_AMOUNT} ${SYMBOL} tegen {current_price:.2f} EUR.")
                     place_order(SYMBOL, 'buy', TRADE_AMOUNT, current_price)
                     record_transaction('buy', TRADE_AMOUNT, current_price)
-                    status.update(
-                        {"last_action": "buy", "buy_price": current_price, "open_position": True})
+                    status.update({"last_action": "buy", "buy_price": current_price, "open_position": True})
                     save_status(STATUS_FILE, status)
 
                 elif status["open_position"]:
                     # Controleer stop-loss of take-profit
                     profit_loss = (
                         (current_price - status["buy_price"]) / status["buy_price"]) * 100
-                    if profit_loss >= THRESHOLD:
-                        log_message(f"[INFO] Take-profit bereikt! Verkoopt {TRADE_AMOUNT} tegen {current_price:.2f} EUR (+{profit_loss:.2f}%).")
-                        place_order(SYMBOL, 'sell',
-                                    TRADE_AMOUNT, current_price)
+                    if profit_loss >= THRESHOLD_SELL:
+                        log_message(f"[INFO] Verkoopt {TRADE_AMOUNT} tegen {current_price:.2f} EUR (+{profit_loss:.2f}%).")
+                        place_order(SYMBOL, 'sell',TRADE_AMOUNT, current_price)
                         record_transaction('sell', TRADE_AMOUNT, current_price)
                         status.update(
                             {"last_action": "sell", "buy_price": None, "open_position": False})
                         save_status(STATUS_FILE, status)
                     elif profit_loss <= STOP_LOSS:
                         log_message(f"[INFO] Stop-loss bereikt! Verkoopt {TRADE_AMOUNT} tegen {current_price:.2f} EUR ({profit_loss:.2f}%).")
-                        place_order(SYMBOL, 'sell',
-                                    TRADE_AMOUNT, current_price)
+                        place_order(SYMBOL, 'sell',TRADE_AMOUNT, current_price)
                         record_transaction('sell', TRADE_AMOUNT, current_price)
                         status.update(
                             {"last_action": "sell", "buy_price": None, "open_position": False})

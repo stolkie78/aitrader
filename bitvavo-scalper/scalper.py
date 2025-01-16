@@ -106,7 +106,7 @@ def get_current_price(symbol):
     """Haal de huidige prijs op."""
     ticker = bitvavo.tickerPrice({'market': symbol})
     if 'price' not in ticker:
-        log_message(f"Fout: Kon de prijs niet ophalen voor {symbol}.")
+        log_message(f"[ERROR] Kon de prijs niet ophalen voor {symbol}.")
         raise ValueError(f"Kon de prijs niet ophalen voor {symbol}. Response: {ticker}")
     return float(ticker['price'])
 
@@ -148,7 +148,7 @@ def generate_daily_report():
                 profit_loss = (txn['price'] - buy_txn['price']) * txn['amount']
                 total_profit_loss += profit_loss
 
-    log_message(f"Dagelijkse winst/verlies: {total_profit_loss:.2f} EUR")
+    log_message(f"[INFO] Dagelijkse winst/verlies: {total_profit_loss:.2f} EUR")
     return total_profit_loss
 
 
@@ -160,9 +160,9 @@ def place_order(symbol, side, amount, price):
         try:
             order = bitvavo.placeOrder(symbol, side, 'market', {
                                     'amount': str(amount)})
-            log_message(f"Order geplaatst: {order}")
+            log_message(f"[INFO] Order geplaatst: {order}")
         except Exception as e:
-            log_message(f"Fout bij het plaatsen van de order: {e}")
+            log_message(f"[ERROR] Fout bij het plaatsen van de order: {e}")
 
 
 def trading_bot():
@@ -186,7 +186,7 @@ def trading_bot():
                 price_change = ((next_price - current_price) /
                                 current_price) * 100
 
-                log_message(f"Voorspelde prijs: {next_price:.2f} EUR | Verandering: {price_change:.2f}%")
+                print(f"Voorspelde prijs: {next_price:.2f} EUR | Verandering: {price_change:.2f}%")
 
                 if not status["open_position"] and price_change >= THRESHOLD:
                     # Kooppositie openen
@@ -202,7 +202,7 @@ def trading_bot():
                     profit_loss = (
                         (current_price - status["buy_price"]) / status["buy_price"]) * 100
                     if profit_loss >= THRESHOLD:
-                        log_message(f"[INFO] Take-profit bereikt! Verkoopt {TRADE_AMOUNT} BTC tegen {current_price:.2f} EUR (+{profit_loss:.2f}%).")
+                        log_message(f"[INFO] Take-profit bereikt! Verkoopt {TRADE_AMOUNT} tegen {current_price:.2f} EUR (+{profit_loss:.2f}%).")
                         place_order(SYMBOL, 'sell',
                                     TRADE_AMOUNT, current_price)
                         record_transaction('sell', TRADE_AMOUNT, current_price)
@@ -210,7 +210,7 @@ def trading_bot():
                             {"last_action": "sell", "buy_price": None, "open_position": False})
                         save_status(STATUS_FILE, status)
                     elif profit_loss <= STOP_LOSS:
-                        log_message(f"[INFO] Stop-loss bereikt! Verkoopt {TRADE_AMOUNT} BTC tegen {current_price:.2f} EUR ({profit_loss:.2f}%).")
+                        log_message(f"[INFO] Stop-loss bereikt! Verkoopt {TRADE_AMOUNT} tegen {current_price:.2f} EUR ({profit_loss:.2f}%).")
                         place_order(SYMBOL, 'sell',
                                     TRADE_AMOUNT, current_price)
                         record_transaction('sell', TRADE_AMOUNT, current_price)
@@ -226,7 +226,7 @@ def trading_bot():
             time.sleep(CHECK_INTERVAL)
 
     except KeyboardInterrupt:
-        log_message("Trading bot gestopt door gebruiker.")
+        log_message("[INFO] Trading bot gestopt door gebruiker.")
         generate_daily_report()
     except Exception as e:
         log_message(f"Fout: {e}")
@@ -234,5 +234,5 @@ def trading_bot():
 
 # Start de bot
 if __name__ == "__main__":
-    log_message(f"Scalping bot gestart")
+    log_message(f"[INFO] Scalping bot gestart")
     trading_bot()

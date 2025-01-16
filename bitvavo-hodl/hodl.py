@@ -2,11 +2,14 @@ from python_bitvavo_api.bitvavo import Bitvavo
 from sklearn.linear_model import LinearRegression
 import numpy as np
 import json
-from datetime import datetime, timedelta
-from datetime import datetime, timezone
+import requests
+from datetime import datetime, timedelta, timezone
+import os
 import time
 
-# Configuratie laden
+# Configuratiebestanden
+DATA_DIR = "data"
+os.makedirs(DATA_DIR, exist_ok=True)
 
 
 def load_config(file_path):
@@ -14,7 +17,7 @@ def load_config(file_path):
         return json.load(f)
 
 
-# Configuratiebestanden
+# Configuratie laden
 config = load_config("config.json")
 hodl_config = load_config("hodl.json")
 
@@ -31,25 +34,73 @@ bitvavo = Bitvavo({
 # Configuratievariabelen
 SYMBOL = hodl_config["SYMBOL"]
 TRADE_AMOUNT = hodl_config["TRADE_AMOUNT"]
-CHECK_INTERVAL_DAYS = hodl_config["CHECK_INTERVAL_DAYS"]
+CHECK_INTERVAL = hodl_config["CHECK_INTERVAL"]
 RSI_OVERBOUGHT = hodl_config["RSI_OVERBOUGHT"]
 RSI_OVERSOLD = hodl_config["RSI_OVERSOLD"]
 SMA_WINDOW = hodl_config["SMA_WINDOW"]
 AI_PREDICTION_WINDOW = hodl_config["AI_PREDICTION_WINDOW"]
 DEMO_MODE = hodl_config["DEMO_MODE"]
 
-# Prijsgeschiedenis
-price_history = []
+# Configuratie laden uit slack.json
+slack_config = load_config('slack.json')
+SLACK_WEBHOOK_URL = slack_config.get("SLACK_WEBHOOK_URL")
+print(f"Slack configuratie: {slack_config}")
+
+# Dynamische bestandsnamen
+STATUS_FILE = os.path.join(DATA_DIR, f"status_{SYMBOL}.json")
+TRANSACTIONS_FILE = os.path.join(DATA_DIR, f"transactions_{SYMBOL}.json")
+
+# Laad en sla status op
+def load_status(file_path):
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {"open_position": False, "last_action": None, "buy_price": None}
+
+
+def save_status(file_path, status):
+    with open(file_path, 'w') as f:
+        json.dump(status, f, indent=4)
+
+# Laad en sla transacties op
+def load_transactions(file_path):
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
+
+
+def save_transactions(file_path, transactions):
+    with open(file_path, 'w') as f:
+        json.dump(transactions, f, indent=4)
+
+
+print(f"HODL bot gestart met configuratie: {hodl_config}")
+
+# Slack-bericht sturen
+def send_to_slack(message):
+    payload = {"text": message}
+    try:
+        requests.post(SLACK_WEBHOOK_URL, json=payload)
+    except Exception as e:
+        print(f"[FOUT] Kon bericht niet naar Slack sturen: {e}")
+
 
 # Logfunctie
 def log_message(message):
-    """Logt een bericht met timestamp."""
+    if DEMO_MODE:
+        RUNSTATUS = "[DEMO]"
+    else:
+        RUNSTATUS = "[PROD]"
+
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] {message}")
+    print(f"{RUNSTATUS}[HODL][{SYMBOL}][{timestamp}] {message}")
+    send_to_slack(f"{RUNSTATUS}[HODL][{SYMBOL}] {message}")
 
 # Historische prijzen ophalen
 def get_historical_prices(symbol, days=200):
-    """Haal historische prijzen op."""
     end_time = int(datetime.now(timezone.utc).timestamp() * 1000)
     start_time = end_time - (days * 24 * 60 * 60 * 1000)
     candles = bitvavo.candles(
@@ -58,12 +109,10 @@ def get_historical_prices(symbol, days=200):
 
 # Bereken SMA
 def calculate_sma(prices, window):
-    """Bereken Simple Moving Average."""
     return np.mean(prices[-window:])
 
 # Bereken RSI
 def calculate_rsi(prices, window=14):
-    """Bereken Relative Strength Index."""
     deltas = np.diff(prices)
     gains = np.where(deltas > 0, deltas, 0)
     losses = np.where(deltas < 0, abs(deltas), 0)
@@ -77,50 +126,77 @@ def calculate_rsi(prices, window=14):
     rs = avg_gain / avg_loss
     return 100 - (100 / (1 + rs))
 
-# Train AI-model
+# AI-modellering
 def train_model(prices):
-    """Train een lineair regressiemodel."""
     times = np.arange(len(prices)).reshape(-1, 1)
     prices = np.array(prices).reshape(-1, 1)
     model = LinearRegression()
     model.fit(times, prices)
     return model
 
-# Voorspel toekomstige prijs
+
 def predict_price(model, next_time):
-    """Voorspel de prijs voor een toekomstig tijdstip."""
     return model.predict([[next_time]])[0][0]
 
-# Plaats een order
-def place_order(symbol, side, amount, price):
-    """Plaats een order."""
+# Plaats order
+def place_order(symbol, side, amount, price, transactions):
     log_message(f"Placing {side} order: {amount} {symbol} at {price:.2f}")
-    try:
-        if DEMO_MODE:
-            log_message("[DEMO MODE] Geen echte order geplaatst.")
-        else:
+    transaction = {
+        "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        "side": side,
+        "amount": amount,
+        "price": price
+    }
+    transactions.append(transaction)
+    save_transactions(TRANSACTIONS_FILE, transactions)
+
+    if DEMO_MODE:
+        log_message("[DEMO MODE] Geen echte order geplaatst.")
+    else:
+        try:
             order = bitvavo.placeOrder(symbol, side, 'market', {'amount': str(amount)})
             log_message(f"Order geplaatst: {order}")
-    except Exception as e:
-        log_message(f"Fout bij plaatsen order: {e}")
+        except Exception as e:
+            log_message(f"Fout bij plaatsen order: {e}")
+
+# Rapportage
+
+
+def generate_report(transactions):
+    total_profit_loss = 0
+    for txn in transactions:
+        if txn['side'] == 'sell':
+            buy_txn = next(
+                (t for t in transactions if t['side'] == 'buy' and t['timestamp'] < txn['timestamp']),
+                None
+            )
+            if buy_txn:
+                profit_loss = (txn['price'] - buy_txn['price']) * txn['amount']
+                total_profit_loss += profit_loss
+
+    log_message(f"Totale winst/verlies: {total_profit_loss:.2f} EUR")
+    log_message("Transacties:")
+    for txn in transactions:
+        log_message(f"{txn['timestamp']} | {txn['side'].capitalize()} | "
+                    f"Hoeveelheid: {txn['amount']:.6f}, Prijs: {txn['price']:.2f}")
 
 # Handelslogica
 def trading_bot():
-    """Lange-termijn HODL-bot met AI-predictie."""
-    log_message(f"Start lange-termijn bot voor {SYMBOL}")
+    log_message(f"Start HODL-strategie bot voor {SYMBOL}")
     last_trade_date = None
+    status = load_status(STATUS_FILE)
+    transactions = load_transactions(TRANSACTIONS_FILE)
 
     while True:
         # Controleer alleen 1 keer per CHECK_INTERVAL_DAYS
         if last_trade_date and datetime.now() - last_trade_date < timedelta(days=CHECK_INTERVAL_DAYS):
             log_message("Wachten tot volgende controle.")
-            time.sleep(3600)  # Wacht een uur
+            time.sleep(3600)
             continue
 
         # Haal historische prijzen op
         prices = get_historical_prices(
             SYMBOL, SMA_WINDOW + AI_PREDICTION_WINDOW)
-        price_history.extend(prices[-SMA_WINDOW:])
         current_price = prices[-1]
 
         # Indicatorberekeningen
@@ -137,20 +213,28 @@ def trading_bot():
             f"Voorspelde prijs: {next_price:.2f}, Voorspelde verandering: {price_change:.2f}%"
         )
 
-        # Beslissingsregels
+        # Koop-/Verkooplogica
         if current_price > sma and rsi < RSI_OVERSOLD and price_change > 0:
             log_message("[SIGNAAL] Koopkans gedetecteerd.")
-            place_order(SYMBOL, 'buy', TRADE_AMOUNT, current_price)
+            place_order(SYMBOL, 'buy', TRADE_AMOUNT,
+                        current_price, transactions)
+            status.update(
+                {"open_position": True, "buy_price": current_price, "last_action": "buy"})
+            save_status(STATUS_FILE, status)
             last_trade_date = datetime.now()
 
         elif current_price < sma and rsi > RSI_OVERBOUGHT and price_change < 0:
             log_message("[SIGNAAL] Verkoopkans gedetecteerd.")
-            place_order(SYMBOL, 'sell', TRADE_AMOUNT, current_price)
+            place_order(SYMBOL, 'sell', TRADE_AMOUNT,
+                        current_price, transactions)
+            status.update(
+                {"open_position": False, "buy_price": None, "last_action": "sell"})
+            save_status(STATUS_FILE, status)
             last_trade_date = datetime.now()
 
-        # Wacht een dag voordat je opnieuw controleert
-        time.sleep(24 * 3600)
-
+        # Rapportage
+        generate_report(transactions)
+        time.sleep(CHECK_INTERVAL)
 
 if __name__ == "__main__":
     trading_bot()

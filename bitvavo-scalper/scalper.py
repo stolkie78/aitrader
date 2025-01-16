@@ -5,12 +5,16 @@ import json
 import numpy as np
 import time
 from datetime import datetime
+import os
+
+# Configuratiebestanden
+DATA_DIR = "data"
+os.makedirs(DATA_DIR, exist_ok=True)
 
 # Laad configuratie vanuit JSON-bestand
 def load_config(file_path):
     with open(file_path, 'r') as f:
         return json.load(f)
-
 
 def load_status(file_path):
     """Laad de huidige status van de bot."""
@@ -68,8 +72,9 @@ DEMO_MODE = scalper_config.get("DEMO_MODE")
 WINDOW_SIZE = scalper_config.get("WINDOW_SIZE", 10)
 
 # Status en transacties laden/opslaan
-STATUS_FILE = f"data/{SYMBOL}_bot_status.json"
-TRANSACTIONS_FILE = f"data/{SYMBOL}_transactions.json"
+# Dynamische bestandsnamen
+STATUS_FILE = os.path.join(DATA_DIR, f"status_{SYMBOL}.json")
+TRANSACTIONS_FILE = os.path.join(DATA_DIR, f"transactions_{SYMBOL}.log")
 
 # Status en transacties laden
 status = load_status(STATUS_FILE)
@@ -156,7 +161,7 @@ def place_order(symbol, side, amount, price):
     else:
         try:
             order = bitvavo.placeOrder(symbol, side, 'market', {'amount': str(amount)})
-            log_message(f"[INFO] Order geplaatst: {order}")
+            print(f"[INFO] Order geplaatst: {order}")
         except Exception as e:
             log_message(f"[ERROR] Fout bij het plaatsen van de order: {e}")
 

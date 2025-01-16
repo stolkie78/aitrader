@@ -15,7 +15,7 @@ fi
 echo "Running Docker container with configuration: $CONFIG"
 docker volume create scalper_volume
 
-docker run --name scalper_${CONFIG} -d \
+docker run --rm --name scalper_${CONFIG} -d \
   -v $(pwd)/config/config.json:/app/config.json \
   -v $(pwd)/config/${CONFIG}.json:/app/scalper.json \
   -v $(pwd)/config/slack.json:/app/slack.json \

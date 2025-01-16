@@ -11,9 +11,6 @@ def load_config(file_path):
     with open(file_path, 'r') as f:
         return json.load(f)
 
-# Status en transacties laden/opslaan
-STATUS_FILE = "data/bot_status.json"
-TRANSACTIONS_FILE = "data/transactions.json"
 
 def load_status(file_path):
     """Laad de huidige status van de bot."""
@@ -70,11 +67,16 @@ CHECK_INTERVAL = scalper_config.get("CHECK_INTERVAL")
 DEMO_MODE = scalper_config.get("DEMO_MODE")
 WINDOW_SIZE = scalper_config.get("WINDOW_SIZE", 10)
 
+# Status en transacties laden/opslaan
+STATUS_FILE = f"data/{SYMBOL}_bot_status.json"
+TRANSACTIONS_FILE = f"data/{SYMBOL}_transactions.json"
+
 # Status en transacties laden
 status = load_status(STATUS_FILE)
 transactions = load_transactions(TRANSACTIONS_FILE)
 price_history = []  # Historische prijzen
 start_time = datetime.now()  # Starttijd voor dagelijkse rapportage
+
 
 print(f"Scalping bot gestart met configuratie: {scalper_config}")
 

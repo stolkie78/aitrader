@@ -8,12 +8,13 @@ from datetime import datetime
 import os
 from decimal import Decimal
 
+#Meta info
+BOT_NAME = "BAIBY"
 version = "0.7"
 
 # Configuratiebestanden
 DATA_DIR = "data"
 os.makedirs(DATA_DIR, exist_ok=True)
-BOT_NAME = "BAIBY"
 
 
 

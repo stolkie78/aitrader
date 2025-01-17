@@ -13,6 +13,9 @@ version = "0.7"
 # Configuratiebestanden
 DATA_DIR = "data"
 os.makedirs(DATA_DIR, exist_ok=True)
+BOT_NAME = "BAIBY"
+
+
 
 # Laad configuratie vanuit JSON-bestand
 def load_config(file_path):
@@ -47,8 +50,6 @@ def save_transactions(file_path, transactions):
 
 # Configuratie laden uit config.json
 config = load_config('config.json')
-
-# Bitvavo-instantie aanmaken met configuratie
 bitvavo = Bitvavo({
     'APIKEY': config.get('API_KEY'),
     'APISECRET': config.get('API_SECRET'),
@@ -75,7 +76,6 @@ DEMO_MODE = scalper_config.get("DEMO_MODE")
 WINDOW_SIZE = scalper_config.get("WINDOW_SIZE", 10)
 
 # Status en transacties laden/opslaan
-# Dynamische bestandsnamen
 STATUS_FILE = os.path.join(DATA_DIR, f"status_{SYMBOL}.json")
 TRANSACTIONS_FILE = os.path.join(DATA_DIR, f"transactions_{SYMBOL}.log")
 
@@ -84,9 +84,6 @@ status = load_status(STATUS_FILE)
 transactions = load_transactions(TRANSACTIONS_FILE)
 price_history = []  # Historische prijzen
 start_time = datetime.now()  # Starttijd voor dagelijkse rapportage
-
-
-
 
     # Slack-bericht sturen
 def send_to_slack(message):
@@ -104,7 +101,7 @@ def log_message(message):
         RUNSTATUS = "[PROD]"
 
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"{RUNSTATUS}[SCALPER][{SYMBOL}][{timestamp}] {message}")
+    print(f"{RUNSTATUS}[SCALPER][{SYMBOL}][{timestamp}] {BOT_NAME} {message}")
     send_to_slack(f"{RUNSTATUS}[SCALPER][{SYMBOL}] {message}")
 
 def get_current_price(symbol):
@@ -198,7 +195,7 @@ def trading_bot():
 
                 if not status["open_position"] and price_change <= THRESHOLD_BUY:
                     # Kooppositie openen
-                    log_message(f"[INFO] Koopt {TRADE_AMOUNT} {SYMBOL} tegen {formatted_current_price} EUR.")
+                    log_message(f":green_apple: Koopt {TRADE_AMOUNT}!")
                     place_order(SYMBOL, 'buy', TRADE_AMOUNT, current_price)
                     record_transaction('buy', TRADE_AMOUNT, current_price)
                     status.update({"last_action": "buy", "buy_price": current_price, "open_position": True})
@@ -209,14 +206,15 @@ def trading_bot():
                     profit_loss = (
                         (current_price - status["buy_price"]) / status["buy_price"]) * 100
                     if profit_loss >= THRESHOLD_SELL:
-                        log_message(f"[INFO] Verkoopt {TRADE_AMOUNT} tegen {formatted_current_price} EUR (+{profit_loss:.2f}%).")
+                        log_message(f":apple: Verkoopt {TRADE_AMOUNT} (+{profit_loss:.2f}%).")
                         place_order(SYMBOL, 'sell',TRADE_AMOUNT, current_price)
                         record_transaction('sell', TRADE_AMOUNT, current_price)
                         status.update(
                             {"last_action": "sell", "buy_price": None, "open_position": False})
                         save_status(STATUS_FILE, status)
                     elif profit_loss <= STOP_LOSS:
-                        log_message(f"[INFO] Stop-loss bereikt! Verkoopt {TRADE_AMOUNT} tegen {formatted_current_price} EUR ({profit_loss:.2f}%).")
+                        log_message(
+                            f":meat_on_bone: Verkoopt {TRADE_AMOUNT} ({profit_loss:.2f}%) Stop-loss bereikt!")
                         place_order(SYMBOL, 'sell',TRADE_AMOUNT, current_price)
                         record_transaction('sell', TRADE_AMOUNT, current_price)
                         status.update(

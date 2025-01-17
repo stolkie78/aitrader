@@ -1,0 +1,1 @@
+docker build -t bitvavo-trader:0.1 . --no-cache

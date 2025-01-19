@@ -10,13 +10,11 @@ from decimal import Decimal
 
 #Meta info
 BOTNAME = "BAIBY"
-version = "0.8"
+version = "0.9"
 
 # Configuratiebestanden
 DATA_DIR = "data"
 os.makedirs(DATA_DIR, exist_ok=True)
-
-
 
 # Laad configuratie vanuit JSON-bestand
 def load_config(file_path):
@@ -75,6 +73,7 @@ TRADE_AMOUNT = scalper_config.get("TRADE_AMOUNT")
 CHECK_INTERVAL = scalper_config.get("CHECK_INTERVAL")
 DEMO_MODE = scalper_config.get("DEMO_MODE")
 WINDOW_SIZE = scalper_config.get("WINDOW_SIZE", 10)
+TRADE_FEE_PERCENTAGE= scalper_config.get("TRADE_FEE_PERCENTAGE", 0.5)
 
 # Status en transacties laden/opslaan
 STATUS_FILE = os.path.join(DATA_DIR, f"status_{SYMBOL}.json")
@@ -166,11 +165,6 @@ def place_order(symbol, side, amount, price):
         except Exception as e:
             log_message(f"[ERROR] Fout bij het plaatsen van de order: {e}")
 
-
-# Kosten per trade in percentage
-TRADE_FEE_PERCENTAGE = 0.5  # Bijvoorbeeld 0.5% kosten
-
-
 def calculate_trade_cost(price, amount):
     """Bereken de handelskosten."""
     return (TRADE_FEE_PERCENTAGE / 100) * price * amount
@@ -188,7 +182,8 @@ def trading_bot():
             if len(price_history) > WINDOW_SIZE:
                 price_history.pop(0)
 
-            print(f"Huidige prijs: {current_price:.2f}")
+            if len(price_history) < WINDOW_SIZE:
+                print(f"AI Verzamelt huidige prijs info: {current_price:.2f}")
 
             # Alleen trainen als we genoeg data hebben
             if len(price_history) == WINDOW_SIZE:
@@ -202,14 +197,14 @@ def trading_bot():
                 minimum_profit = 2 * trade_cost  # Kosten bij kopen en verkopen
 
                 print(
-                    f"Voorspelde prijs: {next_price:.2f} EUR | Verandering: {price_change:.2f}% | "
+                    f"Huidige prijs: {current_price:.2f} EUR | Voorspelde prijs: {next_price:.2f} EUR | Verandering: {price_change:.2f}% | "
                     f"Minimale winst vereist: {minimum_profit:.2f} EUR"
                 )
 
                 if not status["open_position"] and next_price > current_price + minimum_profit:
                     # Kooppositie openen
                     log_message(
-                        f":green_apple: Koopt {TRADE_AMOUNT} BTC (verwachte winst > kosten).")
+                        f":green_apple: Koopt {TRADE_AMOUNT} (verwachte winst > kosten).")
                     place_order(SYMBOL, 'buy', TRADE_AMOUNT, current_price)
                     record_transaction('buy', TRADE_AMOUNT, current_price)
                     status.update(

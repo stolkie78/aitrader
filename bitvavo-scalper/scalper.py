@@ -9,8 +9,8 @@ import os
 from decimal import Decimal
 
 #Meta info
-BOT_NAME = "BAIBY"
-version = "0.7"
+BOTNAME = "BAIBY"
+version = "0.8"
 
 # Configuratiebestanden
 DATA_DIR = "data"
@@ -102,7 +102,7 @@ def log_message(message):
         RUNSTATUS = "[PROD]"
 
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"{RUNSTATUS}[SCALPER][{SYMBOL}][{timestamp}] {BOT_NAME} {message}")
+    print(f"{RUNSTATUS}[SCALPER][{SYMBOL}][{timestamp}] {BOTNAME} {message}")
     send_to_slack(f"{RUNSTATUS}[SCALPER][{SYMBOL}] {message}")
 
 def get_current_price(symbol):
@@ -167,8 +167,17 @@ def place_order(symbol, side, amount, price):
             log_message(f"[ERROR] Fout bij het plaatsen van de order: {e}")
 
 
+# Kosten per trade in percentage
+TRADE_FEE_PERCENTAGE = 0.5  # Bijvoorbeeld 0.5% kosten
+
+
+def calculate_trade_cost(price, amount):
+    """Bereken de handelskosten."""
+    return (TRADE_FEE_PERCENTAGE / 100) * price * amount
+
+
 def trading_bot():
-    """Scalping bot met AI-predictie, herstartbare status en dagelijkse rapportage."""
+    """Scalping bot met AI-predictie, handelskosten en winstvalidatie."""
     global status, start_time
     try:
         while True:
@@ -176,47 +185,56 @@ def trading_bot():
             price_history.append(current_price)
 
             # Behoud alleen de laatste WINDOW_SIZE prijzen
-            if len(price_history) > WINDOW_SIZE: price_history.pop(0)
-            
-            formatted_current_price = str(Decimal(current_price))
-            if len(price_history) < WINDOW_SIZE:
-                print(f"AI Learning: {SYMBOL}:{formatted_current_price} COUNT:{len(price_history)}/{WINDOW_SIZE} CHECK_INTERVAL:{CHECK_INTERVAL}")
+            if len(price_history) > WINDOW_SIZE:
+                price_history.pop(0)
 
+            print(f"Huidige prijs: {current_price:.2f}")
 
             # Alleen trainen als we genoeg data hebben
             if len(price_history) == WINDOW_SIZE:
                 model = train_model(price_history)
                 next_price = predict_price(model, len(price_history))
-                price_change = ((next_price - current_price) / current_price) * 100
+                price_change = ((next_price - current_price) /
+                                current_price) * 100
 
-                formatted_next_price = str(Decimal(next_price))
-                formatted_price_change = str(Decimal(price_change))
+                # Minimale winst om break-even te draaien
+                trade_cost = calculate_trade_cost(current_price, TRADE_AMOUNT)
+                minimum_profit = 2 * trade_cost  # Kosten bij kopen en verkopen
+
                 print(
-                    f"Voorspelde prijs: {formatted_next_price} EUR | Verandering: {price_change:.2f}%")
+                    f"Voorspelde prijs: {next_price:.2f} EUR | Verandering: {price_change:.2f}% | "
+                    f"Minimale winst vereist: {minimum_profit:.2f} EUR"
+                )
 
-                if not status["open_position"] and price_change <= THRESHOLD_BUY:
+                if not status["open_position"] and next_price > current_price + minimum_profit:
                     # Kooppositie openen
-                    log_message(f":green_apple: Koopt {TRADE_AMOUNT}!")
+                    log_message(
+                        f":green_apple: Koopt {TRADE_AMOUNT} BTC (verwachte winst > kosten).")
                     place_order(SYMBOL, 'buy', TRADE_AMOUNT, current_price)
                     record_transaction('buy', TRADE_AMOUNT, current_price)
-                    status.update({"last_action": "buy", "buy_price": current_price, "open_position": True})
+                    status.update(
+                        {"last_action": "buy", "buy_price": current_price, "open_position": True})
                     save_status(STATUS_FILE, status)
 
                 elif status["open_position"]:
-                    # Controleer stop-loss of take-profit
+                    # Controleer winst of verlies
                     profit_loss = (
                         (current_price - status["buy_price"]) / status["buy_price"]) * 100
-                    if profit_loss >= THRESHOLD_SELL:
-                        log_message(f":apple: Verkoopt {TRADE_AMOUNT} (+{profit_loss:.2f}%).")
-                        place_order(SYMBOL, 'sell',TRADE_AMOUNT, current_price)
+                    if profit_loss > THRESHOLD_SELL and current_price - status["buy_price"] > minimum_profit:
+                        log_message(
+                            f":apple: Verkoopt {TRADE_AMOUNT} BTC (+{profit_loss:.2f}% winst).")
+                        place_order(SYMBOL, 'sell',
+                                    TRADE_AMOUNT, current_price)
                         record_transaction('sell', TRADE_AMOUNT, current_price)
                         status.update(
                             {"last_action": "sell", "buy_price": None, "open_position": False})
                         save_status(STATUS_FILE, status)
-                    elif profit_loss <= STOP_LOSS:
+
+                    elif profit_loss < STOP_LOSS:
                         log_message(
-                            f":meat_on_bone: Verkoopt {TRADE_AMOUNT} ({profit_loss:.2f}%) Stop-loss bereikt!")
-                        place_order(SYMBOL, 'sell',TRADE_AMOUNT, current_price)
+                            f":meat_on_bone: Verkoopt {TRADE_AMOUNT} BTC (stop-loss bereikt).")
+                        place_order(SYMBOL, 'sell',
+                                    TRADE_AMOUNT, current_price)
                         record_transaction('sell', TRADE_AMOUNT, current_price)
                         status.update(
                             {"last_action": "sell", "buy_price": None, "open_position": False})
